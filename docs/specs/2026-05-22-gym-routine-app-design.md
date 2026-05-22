@@ -405,7 +405,16 @@ CREATE TRIGGER trg_sessions_user_id BEFORE INSERT ON workout_sessions
 - 에러 바운더리, 로딩/빈 상태 점검
 - Lighthouse PWA 점수 측정
 - 실제 헬스장 1주일 사용 + 피드백 반영
-- README 작성 (포트폴리오용)
+- **README 포트폴리오 보강** (Mermaid 사용, GitHub에서 자동 렌더):
+  - **ERD** (`erDiagram`) — body_parts/exercises/junction/sessions/sets 전체 관계도
+  - **시퀀스 다이어그램** (`sequenceDiagram`) — 최소 2개:
+    1. Google OAuth + Supabase 인증 흐름
+    2. 운동 세트 입력 → optimistic mutation → onError 롤백 흐름
+  - **플로우차트** (`flowchart`) — 최소 2개:
+    1. 부위 선택 → 추천 알고리즘 → 운동 리스트 생성
+    2. 드롭세트 입력 + 좌우 분기 로직
+  - 데모 영상 또는 GIF (헬스장에서 실제 사용 장면)
+  - 기술 결정 요약 (ADR 링크 + 핵심 트레이드오프)
 
 **총 추정: 20~27일** (이전 12~17일에서 critic 지적 반영해 현실화)
 
