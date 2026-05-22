@@ -9,6 +9,12 @@ out/
 build/
 dist/
 
+# Vercel
+.vercel
+
+# SSL/cert files
+*.pem
+
 # Environment variables
 .env
 .env*.local
