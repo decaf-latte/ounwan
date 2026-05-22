@@ -35,6 +35,10 @@ pnpm-debug.log*
 *.swp
 *.swo
 
+# Claude Code / oh-my-claudecode session state
+.claude/
+.omc/
+
 # OS
 .DS_Store
 Thumbs.db
