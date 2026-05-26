@@ -1,0 +1,1371 @@
+{
+  "version": "2026-05-26",
+  "source": "kakaotalk_self_chat",
+  "exercises": [
+    {
+      "name": "랫풀다운",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "그립 변형(와이드/뉴트럴/멀티)은 같은 운동으로 취급, 세트 source_line에 기록",
+      "confidence": "high"
+    },
+    {
+      "name": "랫풀다운 (한팔씩)",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "랫풀다운",
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "단측 변형 (한팔씩 / 한손)",
+      "confidence": "high"
+    },
+    {
+      "name": "리버스 랫풀다운",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "랫풀다운 머신에서 언더그립으로 당기는 변형. 그립이 반대라 별도 운동으로 취급.",
+      "confidence": "high"
+    },
+    {
+      "name": "원업 랫풀다운",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "원본 카톡 '원업랫풀다운' — 일반 랫풀다운과 구분되는 별도 머신",
+      "confidence": "medium"
+    },
+    {
+      "name": "케이블 하이다운",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "케이블 위에서 아래로 당기는 동작",
+      "confidence": "medium"
+    },
+    {
+      "name": "시티드 케이블 로우",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "그립 변형(V바/뉴트럴/멀티)은 세트 노트로 기록",
+      "confidence": "high"
+    },
+    {
+      "name": "시티드 케이블 로우 (한팔씩)",
+      "equipment": "cable",
+      "is_unilateral": true,
+      "parent_exercise_name": "시티드 케이블 로우",
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "단측 변형",
+      "confidence": "high"
+    },
+    {
+      "name": "시티드 로우",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 20,
+      "notes": "머신 시티드 로우 — 케이블 시티드와 별도",
+      "confidence": "medium"
+    },
+    {
+      "name": "덤벨 로우",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 13,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "로잉머신",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "양손/한손 변형 source_line에 기록",
+      "confidence": "high"
+    },
+    {
+      "name": "로잉머신 (한팔씩)",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "로잉머신",
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "단측 변형 (한손씩)",
+      "confidence": "high"
+    },
+    {
+      "name": "암 풀다운",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "스트레이트암 풀다운 (등 아랫쪽 자극)",
+      "confidence": "high"
+    },
+    {
+      "name": "암 풀오버",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "케이블 누워서 당기기",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "원본: '케이블에 벤치 붙이고 누워서 ㅡ자 앞으로 당기기'",
+      "confidence": "medium"
+    },
+    {
+      "name": "데드리프트",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        },
+        {
+          "code": "leg",
+          "is_primary": false
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 5,
+      "default_reps_max": 12,
+      "notes": "복합 운동: 등(주)/허벅지/엉덩이. ADR-001 M:N 매핑.",
+      "confidence": "high"
+    },
+    {
+      "name": "원레그 데드리프트",
+      "equipment": "free_weight",
+      "is_unilateral": true,
+      "parent_exercise_name": "데드리프트",
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        },
+        {
+          "code": "back",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 4,
+      "default_reps_max": 8,
+      "notes": "단측 변형. 베이스 운동인 데드리프트는 등 위주이지만, 원레그 변형은 엉덩이 자극 위주라 primary가 다름.",
+      "confidence": "high"
+    },
+    {
+      "name": "벤치프레스",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 5,
+      "default_reps_max": 12,
+      "notes": "빈바=20kg 기준",
+      "confidence": "high"
+    },
+    {
+      "name": "누워서 바벨프레스",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 3,
+      "default_reps_max": 8,
+      "notes": "원본 '누워서 바벨프레스' — 벤치프레스와 구분되는지 애매하나 카톡 표기 그대로 보존",
+      "confidence": "medium"
+    },
+    {
+      "name": "머신 체스트프레스",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "팔굽혀펴기",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "푸쉬업과 동일 — 카톡에 '팔굽혀펴기'와 '푸쉬업' 둘 다 등장 (같은 운동의 다른 표기)",
+      "confidence": "high"
+    },
+    {
+      "name": "스미스머신 푸시업",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": "팔굽혀펴기",
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "스미스머신 바를 잡고 인클라인 푸시업 변형",
+      "confidence": "medium"
+    },
+    {
+      "name": "누워서 버터플라이",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "덤벨 플라이",
+      "confidence": "high"
+    },
+    {
+      "name": "펙덱 플라이",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "리버스 펙덱 플라이",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "back",
+          "is_primary": true
+        },
+        {
+          "code": "shoulder",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "후면 삼각근/등 상부",
+      "confidence": "medium"
+    },
+    {
+      "name": "케이블 버터플라이",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "chest",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "팔꿈치 ㄱ자/계속 펴고/숙이고 등 자세 변형은 세트 source_line으로 기록",
+      "confidence": "high"
+    },
+    {
+      "name": "사이드 레터럴 레이즈",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "shoulder",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 15,
+      "default_reps_max": 25,
+      "notes": "원본 표기: '사레레'",
+      "confidence": "high"
+    },
+    {
+      "name": "숄더프레스",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "shoulder",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "업라이트 로우 + 페이스풀",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "shoulder",
+          "is_primary": true
+        },
+        {
+          "code": "trap",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "카톡 원본에 '업라이트로우+페이스풀 같이'로 연달아 표기 — 하나의 콤비 동작으로 취급",
+      "confidence": "medium"
+    },
+    {
+      "name": "와이레이즈",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "shoulder",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "벽/벤치 이마대고 Y레이즈 (후면 삼각근)",
+      "confidence": "medium"
+    },
+    {
+      "name": "W레이즈",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "shoulder",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "벽에 등대고 W레이즈 (후면 삼각근/승모 하부)",
+      "confidence": "medium"
+    },
+    {
+      "name": "리버스 플라이",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "shoulder",
+          "is_primary": true
+        },
+        {
+          "code": "back",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "후면 삼각근/등 상부. 손등으로 미는 느낌, 아예 등 접기.",
+      "confidence": "medium"
+    },
+    {
+      "name": "승모근 상승",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "trap",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "어깨 뒤로하고 승모상승 (무게 많을수록 좋음). 슈러그 변형.",
+      "confidence": "medium"
+    },
+    {
+      "name": "케이블 이마당기기",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "trap",
+          "is_primary": true
+        },
+        {
+          "code": "shoulder",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "원본: '서서 케이블 이마로 당기기(가슴올리고)'. 별도 표기로 '이마찢기'도 나옴 — 동일 운동으로 통합.",
+      "confidence": "medium"
+    },
+    {
+      "name": "이두 컬",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "arm",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "원본 '이두운동 (덤벨 접기?)' — 덤벨 컬",
+      "confidence": "medium"
+    },
+    {
+      "name": "암 킥백",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "arm",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "삼두 운동. 원본 '암킥백 + 폼롤러 잡고 위아래로'",
+      "confidence": "medium"
+    },
+    {
+      "name": "스쿼트",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 20,
+      "notes": "바벨 스쿼트. 빈바=20kg 기준.",
+      "confidence": "high"
+    },
+    {
+      "name": "스미스 스쿼트",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": "스쿼트",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 20,
+      "notes": "스미스머신 스쿼트 변형",
+      "confidence": "high"
+    },
+    {
+      "name": "핵스쿼트",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 20,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "핵스쿼트 (한발씩)",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "핵스쿼트",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "단측 변형",
+      "confidence": "high"
+    },
+    {
+      "name": "핵스쿼트머신 런지",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "핵스쿼트",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 8,
+      "default_reps_max": 12,
+      "notes": "핵스쿼트 머신에서 한발씩 런지 자세로 수행",
+      "confidence": "medium"
+    },
+    {
+      "name": "V스쿼트",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "원본 표기 다양: V스퀏, 브이스쿼트",
+      "confidence": "high"
+    },
+    {
+      "name": "V스쿼트 (한발씩)",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "V스쿼트",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "원레그 변형 / 한발씩",
+      "confidence": "high"
+    },
+    {
+      "name": "와이드 스쿼트",
+      "equipment": "cable",
+      "is_unilateral": false,
+      "parent_exercise_name": "스쿼트",
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        },
+        {
+          "code": "leg",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "케이블에서 와이드 스탠스. 엉덩이 자극 위주라 primary가 다름.",
+      "confidence": "medium"
+    },
+    {
+      "name": "레그프레스",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "레그프레스 (한발씩)",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "레그프레스",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "단측 변형",
+      "confidence": "high"
+    },
+    {
+      "name": "레그익스텐션",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 30,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "레그익스텐션 (한발씩)",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "레그익스텐션",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 5,
+      "default_reps_max": 10,
+      "notes": "단측 변형. 무릎 바깥쪽으로 하는 느낌.",
+      "confidence": "high"
+    },
+    {
+      "name": "레그컬",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 20,
+      "notes": "햄스트링",
+      "confidence": "high"
+    },
+    {
+      "name": "런지",
+      "equipment": "free_weight",
+      "is_unilateral": true,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "본질적으로 단측 운동",
+      "confidence": "high"
+    },
+    {
+      "name": "스미스머신 런지",
+      "equipment": "machine",
+      "is_unilateral": true,
+      "parent_exercise_name": "런지",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 12,
+      "notes": "스미스머신에서 수행",
+      "confidence": "high"
+    },
+    {
+      "name": "워킹런지",
+      "equipment": "free_weight",
+      "is_unilateral": true,
+      "parent_exercise_name": "런지",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "덤벨 머리위로 들고 워킹런지",
+      "confidence": "medium"
+    },
+    {
+      "name": "아웃타이",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        },
+        {
+          "code": "leg",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "힙 어브덕션 머신. 앞에 바잡고/허리 피고 자세 변형은 source_line.",
+      "confidence": "high"
+    },
+    {
+      "name": "이너타이",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "힙 어덕션 머신 (내전근)",
+      "confidence": "high"
+    },
+    {
+      "name": "힙쓰러스트",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "스미스머신 또는 바벨로 수행",
+      "confidence": "high"
+    },
+    {
+      "name": "불가리안 스쿼트",
+      "equipment": "bodyweight",
+      "is_unilateral": true,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        },
+        {
+          "code": "leg",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 15,
+      "notes": "원본 표기: '불스스', '불가리안'. 본질적으로 단측 운동.",
+      "confidence": "high"
+    },
+    {
+      "name": "몬스터 글루트",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 15,
+      "default_reps_max": 20,
+      "notes": "등대고 + 등떼고 자세 변형은 source_line",
+      "confidence": "high"
+    },
+    {
+      "name": "글루트 머신",
+      "equipment": "machine",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "엉덩이 머신 (몬스터글루트와는 별도 머신으로 보임) 별명: 부티머신.",
+      "confidence": "medium"
+    },
+    {
+      "name": "클램쉘",
+      "equipment": "bodyweight",
+      "is_unilateral": true,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 15,
+      "default_reps_max": 20,
+      "notes": "원본 '클램프셸'. 옆으로 누워서 무릎 벌리기 — 본질적으로 단측 운동.",
+      "confidence": "medium"
+    },
+    {
+      "name": "사이드플랭크 어브덕션",
+      "equipment": "bodyweight",
+      "is_unilateral": true,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        },
+        {
+          "code": "core",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 15,
+      "default_reps_max": 20,
+      "notes": "사이드 플랭크 자세에서 위쪽 다리 들기 — 단측",
+      "confidence": "medium"
+    },
+    {
+      "name": "스텝박스 원레그 스쿼트",
+      "equipment": "bodyweight",
+      "is_unilateral": true,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 8,
+      "default_reps_max": 8,
+      "notes": "스텝박스 위에서 한발씩 좌우로 스쿼트 별명: 꾹꾹이.",
+      "confidence": "high"
+    },
+    {
+      "name": "스텝박스 점프",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 1,
+      "default_reps_min": 13,
+      "default_reps_max": 15,
+      "notes": "원본 '스텍박스점프'. 3kg 부하 옵션.",
+      "confidence": "medium"
+    },
+    {
+      "name": "스텝박스 사이드점프",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": "스텝박스 점프",
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 2,
+      "default_reps_max": 3,
+      "notes": "스텝박스 옆으로 점프",
+      "confidence": "low"
+    },
+    {
+      "name": "버피",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        },
+        {
+          "code": "leg",
+          "is_primary": false
+        },
+        {
+          "code": "chest",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 12,
+      "default_reps_max": 15,
+      "notes": "전신 복합 운동. 카톡 표기 '버피(스쿼트)', '스텝박스 버피'. primary는 leg (스쿼트 자세가 메인 자극).",
+      "confidence": "high"
+    },
+    {
+      "name": "옆구리 운동",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 8,
+      "default_reps_max": 12,
+      "notes": "카톡에 자주 등장하지만 구체적인 동작은 명시 안 됨. 옆구리 옆으로 일어나는거 / 벤치에 플랭크하고 옆으로 피는거 등이 함께 등장.",
+      "confidence": "medium"
+    },
+    {
+      "name": "사이드 플랭크",
+      "equipment": "bodyweight",
+      "is_unilateral": true,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 10,
+      "default_reps_max": 13,
+      "notes": "단측 운동",
+      "confidence": "high"
+    },
+    {
+      "name": "데드버그",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "크런치",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "테이블탑 크런치",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": "크런치",
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 10,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "바이시클 크런치",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": "크런치",
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 12,
+      "default_reps_max": 12,
+      "notes": null,
+      "confidence": "high"
+    },
+    {
+      "name": "크리스크로스",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 2,
+      "default_reps_min": 15,
+      "default_reps_max": 20,
+      "notes": null,
+      "confidence": "medium"
+    },
+    {
+      "name": "롤업 롤다운",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "core",
+          "is_primary": true
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 10,
+      "notes": "벽에 대고",
+      "confidence": "medium"
+    },
+    {
+      "name": "사이드 스쿼트",
+      "equipment": "bodyweight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "leg",
+          "is_primary": true
+        },
+        {
+          "code": "glute",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 10,
+      "default_reps_max": 15,
+      "notes": "보통 케틀벨 스윙과 세트로 진행",
+      "confidence": "high"
+    },
+    {
+      "name": "케틀벨 스윙",
+      "equipment": "free_weight",
+      "is_unilateral": false,
+      "parent_exercise_name": null,
+      "body_parts": [
+        {
+          "code": "glute",
+          "is_primary": true
+        },
+        {
+          "code": "core",
+          "is_primary": false
+        },
+        {
+          "code": "back",
+          "is_primary": false
+        }
+      ],
+      "default_sets": 3,
+      "default_reps_min": 8,
+      "default_reps_max": 12,
+      "notes": "보통 사이드 스쿼트와 세트로 진행",
+      "confidence": "high"
+    }
+  ]
+}

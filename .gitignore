@@ -67,3 +67,8 @@ public/fallback-*.js
 # 원본 운동 데이터 (개인 정보 포함, 시드 임포트 후 정리 예정)
 *.eml
 seeds/import-source/
+
+# 카톡 임포트 원본/중간 산출물 (개인 헬스 데이터, RLS로 Supabase에만 보관)
+seeds/workout_sessions.json
+seeds/import-source/
+docs/import/validation-raw-*.md
