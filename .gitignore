@@ -9,6 +9,12 @@ out/
 build/
 dist/
 
+# Vercel
+.vercel
+
+# SSL/cert files
+*.pem
+
 # Environment variables
 .env
 .env*.local
@@ -28,6 +34,10 @@ pnpm-debug.log*
 .idea/
 *.swp
 *.swo
+
+# Claude Code / oh-my-claudecode session state
+.claude/
+.omc/
 
 # OS
 .DS_Store
