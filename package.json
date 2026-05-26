@@ -10,7 +10,10 @@
     "gen:types": "supabase gen types typescript --linked > src/types/database.types.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "import:validate": "tsx scripts/validate-imports.ts",
+    "import:apply": "tsx scripts/import-from-json.ts",
+    "import:gen-md": "tsx scripts/gen-validation-md.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -40,8 +43,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "tsx": "^4.22.3",
     "typescript": "^5",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "zod": "^4.4.3"
   },
   "packageManager": "pnpm@11.2.2+sha512.36e6621fad506178936455e70247b8808ef4ec25797a9f437a93281a020484e2607f6a469a22e982987c3dbb8866e3071514ab10a4a1749e06edcd1ec118436f"
 }
