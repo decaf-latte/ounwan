@@ -23,12 +23,23 @@ async function main() {
   const user = usersData.users.find((u) => u.email === TARGET_EMAIL);
   if (!user) throw new Error(`user ${TARGET_EMAIL} not found`);
 
-  const exJson = JSON.parse(readFileSync("seeds/exercises.json", "utf8"));
-  const sJson = JSON.parse(readFileSync("seeds/workout_sessions.json", "utf8"));
-  const jsonSets = sJson.sessions.flatMap((s: any) =>
-    s.exercises.flatMap((e: any) => e.sets),
+  type SeedSet = { drop_order: number };
+  type SeedExerciseInSession = { sets: SeedSet[] };
+  type SeedSession = { exercises: SeedExerciseInSession[] };
+  type SeedSessionsFile = { sessions: SeedSession[] };
+  type SeedExercise = { body_parts: unknown[] };
+  type SeedExercisesFile = { exercises: SeedExercise[] };
+
+  const exJson = JSON.parse(
+    readFileSync("seeds/exercises.json", "utf8"),
+  ) as SeedExercisesFile;
+  const sJson = JSON.parse(
+    readFileSync("seeds/workout_sessions.json", "utf8"),
+  ) as SeedSessionsFile;
+  const jsonSets = sJson.sessions.flatMap((s) =>
+    s.exercises.flatMap((e) => e.sets),
   );
-  const jsonDropSets = jsonSets.filter((set: any) => set.drop_order > 0);
+  const jsonDropSets = jsonSets.filter((set) => set.drop_order > 0);
 
   const [ex, ebp, sessions, sets, drops] = await Promise.all([
     admin
@@ -55,7 +66,7 @@ async function main() {
   ]);
 
   const ebpJsonCount = exJson.exercises.reduce(
-    (n: number, e: any) => n + e.body_parts.length,
+    (n, e) => n + e.body_parts.length,
     0,
   );
 

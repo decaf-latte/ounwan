@@ -10,8 +10,10 @@ describe("RLS isolation: 본인 외 exercises 접근 차단", () => {
     userB = await createSignedInUser("b");
 
     // User A가 자기 운동 1개 INSERT (트리거가 user_id 자동 주입)
+    // 트리거 동작 자체를 검증하므로 user_id 생략은 의도적 — TS만 우회.
     const { error } = await userA.client
       .from("exercises")
+      // @ts-expect-error 트리거가 user_id를 채우는 것이 이 테스트의 목적 (ADR-008)
       .insert({ name: "Test Exercise A", equipment: "machine" });
     if (error) throw error;
   });
