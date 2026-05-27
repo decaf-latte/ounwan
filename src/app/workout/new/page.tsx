@@ -24,7 +24,6 @@ export default async function NewWorkoutPage() {
     <main className="p-4 max-w-md mx-auto">
       <h1 className="text-2xl font-bold mb-4">운동 시작</h1>
       <StartForm
-        userId={user.id}
         bodyParts={bodyParts}
         exercises={exercises}
         templates={templates}

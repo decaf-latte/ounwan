@@ -4,7 +4,6 @@ import type { TemplateWithBodyParts } from "@/lib/queries/templates";
 import type { RecentSetSummary } from "@/lib/queries/sets";
 
 export type StartFormProps = {
-  userId: string;
   bodyParts: BodyPart[];
   exercises: ExerciseWithBodyParts[];
   templates: TemplateWithBodyParts[];

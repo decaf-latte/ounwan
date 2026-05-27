@@ -38,7 +38,6 @@ type SaveSetVars = {
 };
 
 type SaveSetCtx = {
-  prev: WorkoutSet[];
   tempId: string;
   key: string;
 };
@@ -90,6 +89,19 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
         s.parent_set_id === null,
     );
 
+  const updateDraft = (
+    exId: string,
+    idx: number,
+    patch: Partial<DraftSet>,
+  ) => {
+    setDrafts((prev) => {
+      const copy = { ...prev };
+      copy[exId] = [...copy[exId]];
+      copy[exId][idx] = { ...copy[exId][idx], ...patch };
+      return copy;
+    });
+  };
+
   const saveSet = useMutation<WorkoutSet, Error, SaveSetVars, SaveSetCtx>({
     mutationFn: async (vars) => {
       const payload: WorkoutSetInsert = {
@@ -127,13 +139,12 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
         created_at: new Date().toISOString(),
       };
       setPendingKeys((prev) => new Set(prev).add(key));
-      const prev = savedSets;
       setSavedSets((curr) => [...curr, optimistic]);
-      return { prev, tempId, key };
+      return { tempId, key };
     },
     onError: (err, _vars, ctx) => {
       if (ctx) {
-        setSavedSets(ctx.prev);
+        setSavedSets((curr) => curr.filter((s) => s.id !== ctx.tempId));
         setPendingKeys((p) => {
           const n = new Set(p);
           n.delete(ctx.key);
@@ -201,15 +212,7 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
                     disabled={saved}
                     value={draft.weightKg}
                     onChange={(e) =>
-                      setDrafts((prev) => {
-                        const copy = { ...prev };
-                        copy[ex.id] = [...copy[ex.id]];
-                        copy[ex.id][idx] = {
-                          ...draft,
-                          weightKg: e.target.value,
-                        };
-                        return copy;
-                      })
+                      updateDraft(ex.id, idx, { weightKg: e.target.value })
                     }
                   />
                   <span className="text-muted-foreground">×</span>
@@ -221,12 +224,7 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
                     disabled={saved}
                     value={draft.reps}
                     onChange={(e) =>
-                      setDrafts((prev) => {
-                        const copy = { ...prev };
-                        copy[ex.id] = [...copy[ex.id]];
-                        copy[ex.id][idx] = { ...draft, reps: e.target.value };
-                        return copy;
-                      })
+                      updateDraft(ex.id, idx, { reps: e.target.value })
                     }
                   />
                   <Button
