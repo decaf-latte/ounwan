@@ -81,20 +81,24 @@ git log --oneline -1
 # Expected: d680238 docs(phase-3-5): design system spec ...
 ```
 
-- [ ] **Step 1.1.2: canvas-confetti 설치**
+- [ ] **Step 1.1.2: 의존성 설치 (canvas-confetti + react-swipeable)**
 
 ```bash
-pnpm add canvas-confetti
+pnpm add canvas-confetti react-swipeable
 pnpm add -D @types/canvas-confetti
 ```
 
-Expected: `package.json`에 `canvas-confetti` (deps), `@types/canvas-confetti` (devDeps) 추가됨.
+Expected: `package.json`에 다음 추가:
+- deps: `canvas-confetti` (운동 종료 폭죽), `react-swipeable` (운동 카드 swipe-to-delete)
+- devDeps: `@types/canvas-confetti`
+
+> `react-swipeable`은 own TypeScript 타입 포함 — 별도 @types 패키지 불필요. ~3KB gzipped.
 
 - [ ] **Step 1.1.3: 설치 검증 commit**
 
 ```bash
 git add package.json pnpm-lock.yaml
-git commit -m "chore(phase-3-5): add canvas-confetti for session completion celebrate"
+git commit -m "chore(phase-3-5): add canvas-confetti + react-swipeable"
 ```
 
 ---
@@ -2076,29 +2080,115 @@ const confirmRemove = (exerciseId: string) => {
 };
 ```
 
-운동 카드 JSX에 ✕ 버튼 추가 (CardHeader 근처):
+운동 카드를 **swipe-to-reveal-delete + ✕ 백업** 패턴으로 감쌈. 모바일 헬스장 컨텍스트(땀, 장갑, 모션 중)에서 작은 ✕ 단독으로는 오탭/실수 위험 — iOS Mail/Messages처럼 카드 왼쪽 스와이프로 큰 "삭제" 액션 노출.
+
+추가 import:
+```typescript
+import { useSwipeable } from "react-swipeable";
+```
+
+각 운동 카드를 새 wrapper 컴포넌트로 분리 — 같은 SessionRunner.tsx 안에 inline 선언:
+
+```typescript
+type ExerciseCardWrapperProps = {
+  exerciseId: string;
+  isActive: boolean;
+  isAnyActive: boolean;
+  isRemoving: boolean;
+  onRemove: (exerciseId: string) => void;
+  children: React.ReactNode;
+};
+
+function ExerciseCardWrapper({
+  exerciseId,
+  isActive,
+  isAnyActive,
+  isRemoving,
+  onRemove,
+  children,
+}: ExerciseCardWrapperProps) {
+  const [revealed, setRevealed] = useState(false);
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => setRevealed(true),
+    onSwipedRight: () => setRevealed(false),
+    preventScrollOnSwipe: true,
+    trackTouch: true,
+    trackMouse: false, // 모바일 전용. 데스크탑은 ✕ 백업.
+    delta: 30, // 30px 이상 스와이프해야 발동
+  });
+
+  return (
+    <div
+      {...swipeHandlers}
+      className="relative overflow-hidden rounded-xl mt-3"
+    >
+      {/* 뒤에 깔리는 삭제 버튼 (swipe-left 시 노출) */}
+      <button
+        type="button"
+        onClick={() => onRemove(exerciseId)}
+        disabled={isRemoving}
+        className="absolute right-0 top-0 bottom-0 w-20 bg-danger text-surface font-bold text-body flex items-center justify-center"
+        aria-label="운동 삭제"
+      >
+        삭제
+      </button>
+
+      {/* 실제 카드 — translate로 슬라이드 */}
+      <Card
+        className={cn(
+          "p-4 relative transition-transform duration-200 ease-soft",
+          revealed && "-translate-x-20",
+          isActive && "border-2 border-accent",
+          !isActive && isAnyActive && "opacity-65",
+        )}
+        onClick={() => revealed && setRevealed(false)}
+      >
+        {/* ✕ 백업 — 데스크탑/접근성용. 살짝 크게(p-2). */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(exerciseId);
+          }}
+          disabled={isRemoving}
+          className="absolute top-2 right-2 p-2 rounded-md text-text-ghost hover:text-text-muted hover:bg-accent-soft"
+          aria-label="운동 삭제 (버튼)"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {children}
+      </Card>
+    </div>
+  );
+}
+```
+
+기존 운동 카드 map을 새 wrapper로 교체:
 
 ```tsx
-<Card
-  key={ex.id}
-  className={cn(
-    "mt-3 p-4 relative",
-    ex.id === activeExerciseId && "border-2 border-accent",
-    ex.id !== activeExerciseId && activeExerciseId !== null && "opacity-65",
-  )}
->
-  <button
-    type="button"
-    onClick={() => handleRemoveClick(ex.id)}
-    disabled={isRemoving}
-    className="absolute top-2 right-2 p-1.5 rounded-md text-text-ghost hover:text-text-muted hover:bg-accent-soft"
-    aria-label={`${ex.name} 운동 삭제`}
+{exercises.map((ex) => (
+  <ExerciseCardWrapper
+    key={ex.id}
+    exerciseId={ex.id}
+    isActive={ex.id === activeExerciseId}
+    isAnyActive={activeExerciseId !== null}
+    isRemoving={isRemoving}
+    onRemove={handleRemoveClick}
   >
-    <X className="w-4 h-4" />
-  </button>
-  {/* 기존 운동 헤더 + 세트 행들 */}
-</Card>
+    {/* 기존 운동 헤더 + 세트 행들 */}
+  </ExerciseCardWrapper>
+))}
 ```
+
+**UX 동작:**
+- 모바일: 카드 위에서 왼쪽 swipe → 카드가 80px 왼쪽으로 슬라이드 + "삭제" 빨강 버튼 노출
+- "삭제" 탭 → 세트 저장 시 확인 다이얼로그 / 없으면 즉시 삭제
+- 카드 본문 탭 (열려 있을 때) → 다시 닫힘 (snap back)
+- 오른쪽 swipe → 닫힘
+- 데스크탑: swipe 미동작, 우상단 ✕ 버튼 사용 (살짝 크게 36×36 tap area)
+- 접근성: ✕ 버튼 항상 visible — 키보드 tab + Enter로도 작동
 
 운동 카드 밖에 확인 다이얼로그 1개 추가 (component return 안 어딘가):
 
@@ -2239,8 +2329,9 @@ pnpm dev
 5. 운동 시작 → 부위 선택 → 추천 → 시작
 6. 세션 페이지: 활성 운동 코랄 보더, 비활성 운동 옅음
 7. **세트 input에 지난번 기록(예: 50kg × 10) 자동 채워져 있음**
-8. 운동 카드 우상단 ✕ 클릭 (세트 저장 안 함) → 즉시 사라짐
-9. 다른 운동 카드 ✕ 클릭 (세트 1개 저장 후) → 확인 다이얼로그 → "삭제" → 카드 + 세트 모두 사라짐
+8. **운동 카드 왼쪽 스와이프 (모바일)** → "삭제" 빨강 버튼 노출 → 탭 → (세트 없으면) 즉시 사라짐
+9. 다른 운동 카드 ✕ 백업 버튼 클릭 (세트 1개 저장 후) → 확인 다이얼로그 → "삭제" → 카드 + 세트 모두 사라짐
+9.1. 카드 스와이프 열린 상태에서 본문 탭 → 다시 닫힘 (snap back)
 10. 세트 입력 후 ✓ → 칩 형태로 done
 11. 운동 종료 → confetti 폭죽 → `/dashboard`로
 
@@ -2425,6 +2516,9 @@ git push origin v0.3.5-design-system
 | 사용자가 다크모드 토글 후 새로고침 시 깜빡임 | 해결됨 | next-themes `attribute="class"` + `defaultTheme="system"`로 hydration 전에 class 주입. |
 | 운동 종료가 빈 세션일 때도 confetti | 낮음 | Plan 3.1 finishSession이 `savedSets.length === 0`이면 버튼 disabled. 통과 안 됨. |
 | Delete exercise → 세트 CASCADE 데이터 손실 (실수 탭) | 중간 | 세트 저장한 운동은 무조건 확인 다이얼로그 (Task 5.4.9). 세트 없는 운동은 URL만 갱신 — 복구는 페이지 뒤로 가서 다시 추천 받으면 됨. |
+| 작은 ✕ 단독 → 헬스장 모션 중 오탭 위험 | 해결됨 | iOS 메일식 swipe-left → 노출되는 80px 빨강 "삭제" 버튼이 주 인터랙션. ✕는 데스크탑/접근성 백업으로 36×36 크기 유지. |
+| Swipe 동작이 scroll과 충돌 (세로 scroll 페이지에서 가로 swipe 인식 모호) | 중간 | `react-swipeable`의 `preventScrollOnSwipe: true` + `delta: 30px` 임계로 명확 분리. 30px 이하 가로 이동은 scroll 우선. |
+| Swipe 노출 상태로 사용자가 떠나면 redraw 시 다시 잠김 | 낮음 | `revealed` state는 컴포넌트 unmount/remount 시 자동 초기화. URL/Persist 안 함. |
 | Delete 모든 운동 삭제 시 빈 세션이 DB에 남음 | 낮음 | `removeExerciseFromSession`에서 remaining=0이면 `/dashboard`로 redirect. 세션 자체는 남지만 ended_at은 null — 사용자가 직접 다시 진입해서 종료 가능. (편의성 vs 데이터 자동 정리 트레이드오프). |
 | Prefill 값이 너무 옛날 기록 (1년 전 등) | 낮음 | `fetchLastMainSetsByExercise`는 시간 필터 없이 latest 1개. 1년 묵은 가벼운 무게가 채워질 수 있음. 사용자가 input 보고 조정. 한 번 ✓ 누르면 그게 새 prefill 됨. |
 | Prefill 쿼리 200건 over-fetch 성능 | 낮음 | `created_at` indexed + `workout_sessions.user_id` indexed. 운동 10개 × 평균 20세트 = 200 row 조회 ms 단위. |
@@ -2471,3 +2565,4 @@ PR 머지 후 디자인 회귀 발견 시:
 | v1 | 2026-05-28 | 초안 — spec v2 기반 — 6 chunks (Foundation / Utilities / Components / Queries / Screens / Verification). TDD는 유틸 + ProgressRing에만 적용 (시각 컴포넌트는 수동 검증). |
 | v2 | 2026-05-28 | critic round 1 반영: **(CRITICAL)** `Set<number>` RSC→Client 직렬화 실패 — `Array.from()` 변환 + Dashboard `number[]` 수용 (.includes). **(CRITICAL)** `--font-heading` 토큰 복원으로 CardTitle/DialogTitle 폰트 보존. **(MAJOR)** Sonner / shadcn inline style 위한 raw shadcn vars (`--popover`, `--border`, `--radius`, `--primary` 등) `:root` / `.dark` 명시. **(MAJOR)** signOut UI 복원 — Dashboard 우상단 LogOut 아이콘 + `dashboard/actions.ts:signOut` 재호출. **(MAJOR)** Login page 전체 코드 명시 (vague description 제거, signInWithGoogle/searchParams.error 보존). **(MAJOR)** Typography 토큰 한계 명시 — font-size만 적용, weight/line-height는 별도 utility로. **(MAJOR)** shadcn `dark:` variant 시각 audit step (Task 6.1.5) — `dark:bg-input/30` 등 double-darkening 발견 시 .tsx 수정 허용. **(MINOR)** `--font-mono` 시스템 monospace fallback 유지. |
 | v3 | 2026-05-28 | 사용자 기능 추가 요청 반영 (원래 Plan 3.2 후보 2개를 3.5로 이동): (1) **운동 진행 중 운동 카드 삭제** — ✕ 버튼, 세트 저장 시 확인 다이얼로그, CASCADE delete, 마지막 운동 삭제 시 대시보드 redirect. Task 5.4.9 + `removeExerciseFromSession` Server Action 신설. (2) **이전 기록 자동 채움** — `fetchLastMainSetsByExercise` 쿼리 (Task 4.3), SessionRunner의 drafts useState 초기화에 prefill 통합 (Task 5.4.8). Verification 시나리오 A에 두 기능 추가. spec Section 7도 "이 plan으로 옮겨온 항목"으로 업데이트. |
+| v4 | 2026-05-28 | 사용자 UX 개선 요청 — "✕ 버튼이 작아 헬스장에서 실수 탭 가능, 스와이프로도 삭제하게": (1) 의존성에 `react-swipeable` 추가 (~3KB). (2) Task 5.4.9 delete UI를 **swipe-to-reveal + ✕ 백업 결합 패턴**으로 재작성. iOS Mail/Messages 패턴 — 카드 왼쪽 스와이프 → 80px 빨강 "삭제" 버튼 노출 → 탭. ✕ 백업은 36×36으로 살짝 크게. (3) Verification 시나리오 swipe 단계 추가. (4) Risks에 scroll 충돌 / swipe state persistence 항목 추가. |
