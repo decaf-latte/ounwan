@@ -72,3 +72,6 @@ seeds/import-source/
 seeds/workout_sessions.json
 seeds/import-source/
 docs/import/validation-raw-*.md
+
+# Visual companion (brainstorming mockups)
+.superpowers/
