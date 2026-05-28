@@ -1201,6 +1201,84 @@ git commit -m "feat(phase-3-5): fetchRecentExerciseHistory RSC helper"
 
 ---
 
+### Task 4.3: fetchLastMainSetsByExercise (prefill용)
+
+**Files:**
+- Modify: `src/lib/queries/sets.ts`
+
+세션 시작 시 운동별 "지난번 기록"을 한 번에 가져와서 SessionRunner의 input default 값으로 활용.
+
+- [ ] **Step 4.3.1: 함수 추가**
+
+`src/lib/queries/sets.ts` 끝에 추가:
+
+```typescript
+export type LastMainSet = {
+  weightKg: number | null;
+  reps: number | null;
+};
+
+/**
+ * 주어진 exerciseIds 각각에 대해 가장 최근 메인 세트(parent_set_id IS NULL)를 가져옴.
+ * 결과는 exerciseId → { weightKg, reps } 매핑. 기록 없으면 매핑에 키 자체 없음.
+ *
+ * 사용처: 운동 진행 화면 진입 시 SetRow의 input default 값.
+ */
+export async function fetchLastMainSetsByExercise(
+  userId: string,
+  exerciseIds: string[],
+): Promise<Record<string, LastMainSet>> {
+  if (exerciseIds.length === 0) return {};
+  const supabase = await createClient();
+
+  // 한 번의 query로 over-fetch 후 클라에서 운동별 dedupe (최신 1개만)
+  // 운동별로 GROUP BY + MAX(created_at) 같은 SQL은 PostgREST에서 표현 복잡 — over-fetch가 단순
+  const { data, error } = await supabase
+    .from("workout_sets")
+    .select(
+      "exercise_id, weight_kg, reps, created_at, workout_sessions!inner(user_id)",
+    )
+    .eq("workout_sessions.user_id", userId)
+    .in("exercise_id", exerciseIds)
+    .is("parent_set_id", null)
+    .order("created_at", { ascending: false })
+    .limit(200); // 운동 10개 × 평균 20개 history = 안전 마진
+
+  if (error) throw error;
+
+  type Row = {
+    exercise_id: string;
+    weight_kg: number | null;
+    reps: number | null;
+    created_at: string | null;
+  };
+
+  const out: Record<string, LastMainSet> = {};
+  for (const r of (data ?? []) as Row[]) {
+    if (out[r.exercise_id]) continue; // 이미 더 최신 (order DESC)
+    out[r.exercise_id] = { weightKg: r.weight_kg, reps: r.reps };
+  }
+  return out;
+}
+```
+
+- [ ] **Step 4.3.2: TypeCheck**
+
+```bash
+pnpm tsc --noEmit
+```
+
+Expected: 0 errors.
+
+- [ ] **Step 4.3.3: 커밋**
+
+```bash
+git add src/lib/queries/sets.ts
+git commit -m "feat(phase-3-5): fetchLastMainSetsByExercise — prefill values for session runner"
+```
+
+---
+
 ## Chunk 5: Screen Redesigns
 
 **목표:** 토큰/컴포넌트/쿼리가 다 준비됐으니 실제 화면에 적용.
@@ -1646,16 +1724,20 @@ git commit -m "feat(phase-3-5): /workout/new — BodyPartChip + warmer copy + ca
 
 ---
 
-### Task 5.4: /workout/[sessionId] — SessionRunner activeExerciseId + SetRow + celebrate
+### Task 5.4: /workout/[sessionId] — SessionRunner activeExerciseId + SetRow + celebrate + prefill + delete
 
 **Files:**
 - Modify: `src/app/workout/[sessionId]/SessionRunner.tsx`
+- Modify: `src/app/workout/[sessionId]/page.tsx` (prefill 쿼리 호출 + prop 전달)
+- Modify: `src/app/workout/actions.ts` (deleteSessionExercise Server Action)
 
-가장 큰 변경. spec Section 5.3 + 6.4 적용:
+가장 큰 변경. spec Section 5.3 + 6.4 적용 + 신규 기능 2개:
 - `activeExerciseId` 계산 (`useMemo`)
 - `<SetRow>` 컴포넌트로 세트 input 교체
 - 운동 카드: 활성이면 `border-2 border-accent`, 비활성이면 `opacity-65`
 - 운동 종료 시 `celebrate()` 호출
+- **NEW: 운동 카드 우상단 ✕ 버튼 — 세트 저장 시 확인 다이얼로그 + DB cascade delete**
+- **NEW: SetRow input default를 prefill 값(지난번 기록)으로 채움**
 
 - [ ] **Step 5.4.1: import 추가**
 
@@ -1797,6 +1879,283 @@ git add src/app/workout/\[sessionId\]/SessionRunner.tsx
 git commit -m "feat(phase-3-5): SessionRunner — activeExerciseId + SetRow + confetti on finish"
 ```
 
+- [ ] **Step 5.4.8: Prefill 통합 — page.tsx에서 쿼리 + SessionRunner에 prop 전달**
+
+`src/app/workout/[sessionId]/page.tsx` 수정 — `fetchLastMainSetsByExercise` 호출 추가:
+
+```typescript
+// 기존 import에 추가
+import { fetchLastMainSetsByExercise } from "@/lib/queries/sets";
+import type { LastMainSet } from "@/lib/queries/sets";
+
+// fetchSessionSets 옆에 병렬 fetch 추가 — exerciseIds 결정 후
+const [allExercises, existingSets] = await Promise.all([
+  fetchUserExercises(user.id),
+  fetchSessionSets(sessionId),
+]);
+
+const exerciseIds = exParam
+  ? exParam.split(",").filter(Boolean)
+  : [...new Set(existingSets.map((s) => s.exercise_id))];
+
+// 신규: prefill
+const prefillDefaults = await fetchLastMainSetsByExercise(user.id, exerciseIds);
+
+// ... selectedExercises 계산 동일
+
+return (
+  <main className="p-5 max-w-md mx-auto pb-32">
+    <SessionRunner
+      session={session}
+      exercises={selectedExercises}
+      initialSets={existingSets}
+      prefillDefaults={prefillDefaults}
+    />
+  </main>
+);
+```
+
+`SessionRunner.tsx` props 타입에 `prefillDefaults` 추가:
+
+```typescript
+import type { LastMainSet } from "@/lib/queries/sets";
+
+type Props = {
+  session: WorkoutSession;
+  exercises: ExerciseWithBodyParts[];
+  initialSets: WorkoutSet[];
+  prefillDefaults: Record<string, LastMainSet>; // exerciseId → 지난번 값
+};
+
+export function SessionRunner({
+  session,
+  exercises,
+  initialSets,
+  prefillDefaults,
+}: Props) {
+```
+
+`drafts` useState 초기화 로직 수정 — 빈 세트의 weight/reps default를 prefill로:
+
+```typescript
+const [drafts, setDrafts] = useState<Record<string, DraftSet[]>>(() => {
+  const out: Record<string, DraftSet[]> = {};
+  for (const ex of exercises) {
+    const existing = initialSets
+      .filter((s) => s.exercise_id === ex.id && s.parent_set_id === null)
+      .sort((a, b) => a.set_number - b.set_number);
+    const n = ex.default_sets ?? 3;
+    // prefill 값 (없으면 빈 문자열)
+    const prefill = prefillDefaults[ex.id];
+    const defaultWeight = prefill?.weightKg != null ? String(prefill.weightKg) : "";
+    const defaultReps = prefill?.reps != null ? String(prefill.reps) : "";
+
+    if (existing.length > 0) {
+      out[ex.id] = existing.map((s) => ({
+        setNumber: s.set_number,
+        weightKg: s.weight_kg?.toString() ?? "",
+        reps: s.reps?.toString() ?? "",
+      }));
+      while (out[ex.id].length < n) {
+        out[ex.id].push({
+          setNumber: out[ex.id].length + 1,
+          weightKg: defaultWeight,
+          reps: defaultReps,
+        });
+      }
+    } else {
+      out[ex.id] = Array.from({ length: n }, (_, i) => ({
+        setNumber: i + 1,
+        weightKg: defaultWeight,
+        reps: defaultReps,
+      }));
+    }
+  }
+  return out;
+});
+```
+
+> 운동 카드 헤더에 "지난번 50kg × 10" 표시는 이미 Plan 명세에 있음 — 그 값을 `prefillDefaults[ex.id]`에서 가져와 표시 가능 (구현 시 활용).
+
+- [ ] **Step 5.4.9: Delete UI — ✕ 버튼 + 확인 다이얼로그**
+
+먼저 `src/app/workout/actions.ts`에 Server Action 추가:
+
+```typescript
+export type RemoveExerciseResult = { ok: false; error: string };
+
+/**
+ * 세션에서 운동 1개 제거.
+ * 1. 해당 운동의 모든 세트 (drop set 포함) CASCADE 삭제
+ * 2. URL의 ?exercises= 파라미터에서 해당 ID 제거 후 같은 페이지로 redirect
+ */
+export async function removeExerciseFromSession(input: {
+  sessionId: string;
+  exerciseId: string;
+  remainingExerciseIds: string[]; // 클라가 알고 있는 현재 목록 - 삭제된 ID
+}): Promise<RemoveExerciseResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // session_id + exercise_id 조합으로 모든 세트 삭제
+  // RLS는 workout_sets via session 정책으로 본인 데이터만 허용 — exercise_id 조건은 명시 안전장치
+  const { error } = await supabase
+    .from("workout_sets")
+    .delete()
+    .eq("session_id", input.sessionId)
+    .eq("exercise_id", input.exerciseId);
+
+  if (error) {
+    console.error("removeExerciseFromSession failed", error);
+    return { ok: false, error: "운동 삭제 실패" };
+  }
+
+  if (input.remainingExerciseIds.length === 0) {
+    // 더 이상 운동 없음 → 대시보드로
+    redirect("/dashboard");
+  }
+
+  const exParam = encodeURIComponent(input.remainingExerciseIds.join(","));
+  redirect(`/workout/${input.sessionId}?exercises=${exParam}`);
+}
+```
+
+`SessionRunner.tsx`에 ✕ 버튼 + 확인 다이얼로그 추가:
+
+```typescript
+// import 추가
+import { X } from "lucide-react";
+import { useTransition, useState } from "react";
+import { removeExerciseFromSession } from "@/app/workout/actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+
+// 컴포넌트 본문에 추가
+const [isRemoving, startRemove] = useTransition();
+const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+
+const hasSavedSetsFor = (exerciseId: string): boolean =>
+  savedSets.some(
+    (s) => s.exercise_id === exerciseId && s.parent_set_id === null,
+  );
+
+const handleRemoveClick = (exerciseId: string) => {
+  if (hasSavedSetsFor(exerciseId)) {
+    // 저장된 세트 있음 — 확인 다이얼로그
+    setRemoveTarget(exerciseId);
+  } else {
+    // 즉시 삭제
+    confirmRemove(exerciseId);
+  }
+};
+
+const confirmRemove = (exerciseId: string) => {
+  startRemove(async () => {
+    const remaining = exercises
+      .filter((e) => e.id !== exerciseId)
+      .map((e) => e.id);
+    const result = await removeExerciseFromSession({
+      sessionId: session.id,
+      exerciseId,
+      remainingExerciseIds: remaining,
+    });
+    if (result && result.ok === false) {
+      toast.error(result.error);
+    }
+    setRemoveTarget(null);
+  });
+};
+```
+
+운동 카드 JSX에 ✕ 버튼 추가 (CardHeader 근처):
+
+```tsx
+<Card
+  key={ex.id}
+  className={cn(
+    "mt-3 p-4 relative",
+    ex.id === activeExerciseId && "border-2 border-accent",
+    ex.id !== activeExerciseId && activeExerciseId !== null && "opacity-65",
+  )}
+>
+  <button
+    type="button"
+    onClick={() => handleRemoveClick(ex.id)}
+    disabled={isRemoving}
+    className="absolute top-2 right-2 p-1.5 rounded-md text-text-ghost hover:text-text-muted hover:bg-accent-soft"
+    aria-label={`${ex.name} 운동 삭제`}
+  >
+    <X className="w-4 h-4" />
+  </button>
+  {/* 기존 운동 헤더 + 세트 행들 */}
+</Card>
+```
+
+운동 카드 밖에 확인 다이얼로그 1개 추가 (component return 안 어딘가):
+
+```tsx
+<Dialog
+  open={removeTarget !== null}
+  onOpenChange={(open) => !open && setRemoveTarget(null)}
+>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>이 운동 삭제할까요?</DialogTitle>
+    </DialogHeader>
+    <p className="text-body text-text-muted">
+      이미 저장한 세트도 같이 지워집니다. 되돌릴 수 없어요.
+    </p>
+    <DialogFooter>
+      <DialogClose asChild>
+        <Button variant="ghost" disabled={isRemoving}>
+          취소
+        </Button>
+      </DialogClose>
+      <Button
+        variant="default"
+        disabled={isRemoving}
+        onClick={() => removeTarget && confirmRemove(removeTarget)}
+      >
+        {isRemoving ? "삭제 중..." : "삭제"}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+- [ ] **Step 5.4.10: dev 검증 — prefill + delete**
+
+```bash
+pnpm dev
+```
+
+검증:
+1. `/dashboard` → "운동 시작" → 운동 시작 → 세션 페이지
+2. 각 세트 input에 **지난번 값이 미리 채워져 있어야 함** (Phase 2 import 데이터 기준 — 예: 랫풀다운 40kg × 10)
+3. 운동 카드 우상단 ✕ 클릭:
+   - 세트 저장 안 한 운동 → 즉시 사라짐 + URL `?exercises=` 갱신
+   - 세트 저장한 운동 → 확인 다이얼로그 → "삭제" → 세트 + 카드 사라짐
+4. 마지막 운동까지 삭제하면 `/dashboard`로 자동 이동
+
+→ Ctrl+C.
+
+- [ ] **Step 5.4.11: TypeCheck + lint + 커밋**
+
+```bash
+pnpm tsc --noEmit && pnpm lint
+git add src/app/workout/actions.ts src/app/workout/\[sessionId\]/
+git commit -m "feat(phase-3-5): prefill from last main set + delete exercise with confirm dialog"
+```
+
 ---
 
 ### Task 5.5: loading.tsx / error.tsx / not-found.tsx 톤 적용
@@ -1879,8 +2238,11 @@ pnpm dev
 4. (다크) 같은 화면들이 따뜻한 갈색 톤으로 자동 전환
 5. 운동 시작 → 부위 선택 → 추천 → 시작
 6. 세션 페이지: 활성 운동 코랄 보더, 비활성 운동 옅음
-7. 세트 입력 후 ✓ → 칩 형태로 done
-8. 운동 종료 → confetti 폭죽 → `/dashboard`로
+7. **세트 input에 지난번 기록(예: 50kg × 10) 자동 채워져 있음**
+8. 운동 카드 우상단 ✕ 클릭 (세트 저장 안 함) → 즉시 사라짐
+9. 다른 운동 카드 ✕ 클릭 (세트 1개 저장 후) → 확인 다이얼로그 → "삭제" → 카드 + 세트 모두 사라짐
+10. 세트 입력 후 ✓ → 칩 형태로 done
+11. 운동 종료 → confetti 폭죽 → `/dashboard`로
 
 **시나리오 B: prefers-reduced-motion 켜기**
 - DevTools → Rendering → Emulate CSS media feature → `prefers-reduced-motion: reduce`
@@ -2062,6 +2424,10 @@ git push origin v0.3.5-design-system
 | Dashboard 4 쿼리가 느림 (특히 fetchRecentExerciseHistory가 100개 over-fetch) | 낮음 | Supabase indexed columns (workout_sets.created_at, workout_sessions.user_id+started_at). 100개도 ms 단위. |
 | 사용자가 다크모드 토글 후 새로고침 시 깜빡임 | 해결됨 | next-themes `attribute="class"` + `defaultTheme="system"`로 hydration 전에 class 주입. |
 | 운동 종료가 빈 세션일 때도 confetti | 낮음 | Plan 3.1 finishSession이 `savedSets.length === 0`이면 버튼 disabled. 통과 안 됨. |
+| Delete exercise → 세트 CASCADE 데이터 손실 (실수 탭) | 중간 | 세트 저장한 운동은 무조건 확인 다이얼로그 (Task 5.4.9). 세트 없는 운동은 URL만 갱신 — 복구는 페이지 뒤로 가서 다시 추천 받으면 됨. |
+| Delete 모든 운동 삭제 시 빈 세션이 DB에 남음 | 낮음 | `removeExerciseFromSession`에서 remaining=0이면 `/dashboard`로 redirect. 세션 자체는 남지만 ended_at은 null — 사용자가 직접 다시 진입해서 종료 가능. (편의성 vs 데이터 자동 정리 트레이드오프). |
+| Prefill 값이 너무 옛날 기록 (1년 전 등) | 낮음 | `fetchLastMainSetsByExercise`는 시간 필터 없이 latest 1개. 1년 묵은 가벼운 무게가 채워질 수 있음. 사용자가 input 보고 조정. 한 번 ✓ 누르면 그게 새 prefill 됨. |
+| Prefill 쿼리 200건 over-fetch 성능 | 낮음 | `created_at` indexed + `workout_sessions.user_id` indexed. 운동 10개 × 평균 20세트 = 200 row 조회 ms 단위. |
 
 ## Recovery Path
 
@@ -2088,6 +2454,8 @@ PR 머지 후 디자인 회귀 발견 시:
 | SetRow | `src/components/ui/set-row.tsx` | 4.6 |
 | ThemeToggle | `src/components/ui/theme-toggle.tsx` | 6.2 |
 | Dashboard 새 쿼리 | `src/lib/queries/sessions.ts`, `sets.ts` | 5.1 |
+| Prefill 쿼리 | `src/lib/queries/sets.ts` fetchLastMainSetsByExercise | (plan-only addition) |
+| 운동 삭제 Server Action | `src/app/workout/actions.ts` removeExerciseFromSession | (plan-only addition) |
 | Dashboard 리뉴얼 | `src/app/dashboard/{page,Dashboard}.tsx` | 5.1 |
 | StartForm 리뉴얼 | `src/app/workout/new/StartForm.tsx` | 5.2 |
 | SessionRunner activeId + celebrate | `src/app/workout/[sessionId]/SessionRunner.tsx` | 5.3, 6.4 |
@@ -2102,3 +2470,4 @@ PR 머지 후 디자인 회귀 발견 시:
 |---------|------|--------|
 | v1 | 2026-05-28 | 초안 — spec v2 기반 — 6 chunks (Foundation / Utilities / Components / Queries / Screens / Verification). TDD는 유틸 + ProgressRing에만 적용 (시각 컴포넌트는 수동 검증). |
 | v2 | 2026-05-28 | critic round 1 반영: **(CRITICAL)** `Set<number>` RSC→Client 직렬화 실패 — `Array.from()` 변환 + Dashboard `number[]` 수용 (.includes). **(CRITICAL)** `--font-heading` 토큰 복원으로 CardTitle/DialogTitle 폰트 보존. **(MAJOR)** Sonner / shadcn inline style 위한 raw shadcn vars (`--popover`, `--border`, `--radius`, `--primary` 등) `:root` / `.dark` 명시. **(MAJOR)** signOut UI 복원 — Dashboard 우상단 LogOut 아이콘 + `dashboard/actions.ts:signOut` 재호출. **(MAJOR)** Login page 전체 코드 명시 (vague description 제거, signInWithGoogle/searchParams.error 보존). **(MAJOR)** Typography 토큰 한계 명시 — font-size만 적용, weight/line-height는 별도 utility로. **(MAJOR)** shadcn `dark:` variant 시각 audit step (Task 6.1.5) — `dark:bg-input/30` 등 double-darkening 발견 시 .tsx 수정 허용. **(MINOR)** `--font-mono` 시스템 monospace fallback 유지. |
+| v3 | 2026-05-28 | 사용자 기능 추가 요청 반영 (원래 Plan 3.2 후보 2개를 3.5로 이동): (1) **운동 진행 중 운동 카드 삭제** — ✕ 버튼, 세트 저장 시 확인 다이얼로그, CASCADE delete, 마지막 운동 삭제 시 대시보드 redirect. Task 5.4.9 + `removeExerciseFromSession` Server Action 신설. (2) **이전 기록 자동 채움** — `fetchLastMainSetsByExercise` 쿼리 (Task 4.3), SessionRunner의 drafts useState 초기화에 prefill 통합 (Task 5.4.8). Verification 시나리오 A에 두 기능 추가. spec Section 7도 "이 plan으로 옮겨온 항목"으로 업데이트. |
