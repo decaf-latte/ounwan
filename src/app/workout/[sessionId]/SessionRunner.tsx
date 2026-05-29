@@ -2,26 +2,41 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useSwipeable } from "react-swipeable";
 import { toast } from "sonner";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { SetRow } from "@/components/ui/set-row";
+import { celebrate } from "@/lib/celebrate";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { finishSession } from "@/app/workout/actions";
+import {
+  finishSession,
+  removeExerciseFromSession,
+} from "@/app/workout/actions";
 import type { WorkoutSession } from "@/lib/queries/sessions";
 import type { ExerciseWithBodyParts } from "@/lib/queries/exercises";
-import type { WorkoutSet, WorkoutSetInsert } from "@/lib/queries/sets";
+import type {
+  WorkoutSet,
+  WorkoutSetInsert,
+  LastMainSet,
+} from "@/lib/queries/sets";
 
 type Props = {
   session: WorkoutSession;
   exercises: ExerciseWithBodyParts[];
   initialSets: WorkoutSet[];
+  prefillDefaults: Record<string, LastMainSet>; // exerciseId → 지난번 값
 };
 
 type DraftSet = {
@@ -42,7 +57,86 @@ type SaveSetCtx = {
   key: string;
 };
 
-export function SessionRunner({ session, exercises, initialSets }: Props) {
+type ExerciseCardWrapperProps = {
+  exerciseId: string;
+  isActive: boolean;
+  isAnyActive: boolean;
+  isRemoving: boolean;
+  onRemove: (exerciseId: string) => void;
+  children: React.ReactNode;
+};
+
+function ExerciseCardWrapper({
+  exerciseId,
+  isActive,
+  isAnyActive,
+  isRemoving,
+  onRemove,
+  children,
+}: ExerciseCardWrapperProps) {
+  const [revealed, setRevealed] = useState(false);
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => setRevealed(true),
+    onSwipedRight: () => setRevealed(false),
+    preventScrollOnSwipe: true,
+    trackTouch: true,
+    trackMouse: false, // 모바일 전용. 데스크탑은 ✕ 백업.
+    delta: 30, // 30px 이상 스와이프해야 발동
+  });
+
+  return (
+    <div
+      {...swipeHandlers}
+      className="relative overflow-hidden rounded-xl mt-3"
+    >
+      {/* 뒤에 깔리는 삭제 버튼 (swipe-left 시 노출) */}
+      <button
+        type="button"
+        onClick={() => onRemove(exerciseId)}
+        disabled={isRemoving}
+        className="absolute right-0 top-0 bottom-0 w-20 bg-danger text-surface font-bold text-body flex items-center justify-center"
+        aria-label="운동 삭제"
+      >
+        삭제
+      </button>
+
+      {/* 실제 카드 — translate로 슬라이드 */}
+      <Card
+        className={cn(
+          "p-4 relative transition-transform duration-200 ease-soft",
+          revealed && "-translate-x-20",
+          isActive && "border-2 border-accent",
+          !isActive && isAnyActive && "opacity-65",
+        )}
+        onClick={() => revealed && setRevealed(false)}
+      >
+        {/* ✕ 백업 — 데스크탑/접근성용. 살짝 크게(p-2). */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(exerciseId);
+          }}
+          disabled={isRemoving}
+          className="absolute top-2 right-2 p-2 rounded-md text-text-ghost hover:text-text-muted hover:bg-accent-soft"
+          aria-label="운동 삭제 (버튼)"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {children}
+      </Card>
+    </div>
+  );
+}
+
+export function SessionRunner({
+  session,
+  exercises,
+  initialSets,
+  prefillDefaults,
+}: Props) {
   const supabase = useMemo(() => createClient(), []);
 
   const [drafts, setDrafts] = useState<Record<string, DraftSet[]>>(() => {
@@ -52,6 +146,12 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
         .filter((s) => s.exercise_id === ex.id && s.parent_set_id === null)
         .sort((a, b) => a.set_number - b.set_number);
       const n = ex.default_sets ?? 3;
+      // prefill 값 (없으면 빈 문자열)
+      const prefill = prefillDefaults[ex.id];
+      const defaultWeight =
+        prefill?.weightKg != null ? String(prefill.weightKg) : "";
+      const defaultReps = prefill?.reps != null ? String(prefill.reps) : "";
+
       if (existing.length > 0) {
         out[ex.id] = existing.map((s) => ({
           setNumber: s.set_number,
@@ -61,15 +161,15 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
         while (out[ex.id].length < n) {
           out[ex.id].push({
             setNumber: out[ex.id].length + 1,
-            weightKg: "",
-            reps: "",
+            weightKg: defaultWeight,
+            reps: defaultReps,
           });
         }
       } else {
         out[ex.id] = Array.from({ length: n }, (_, i) => ({
           setNumber: i + 1,
-          weightKg: "",
-          reps: "",
+          weightKg: defaultWeight,
+          reps: defaultReps,
         }));
       }
     }
@@ -79,6 +179,8 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
   const [savedSets, setSavedSets] = useState<WorkoutSet[]>(initialSets);
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
   const [isFinishing, startFinish] = useTransition();
+  const [isRemoving, startRemove] = useTransition();
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
 
   const setKey = (exId: string, n: number) => `${exId}:${n}`;
   const isSaved = (exerciseId: string, setNumber: number) =>
@@ -89,18 +191,16 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
         s.parent_set_id === null,
     );
 
-  const updateDraft = (
-    exId: string,
-    idx: number,
-    patch: Partial<DraftSet>,
-  ) => {
-    setDrafts((prev) => {
-      const copy = { ...prev };
-      copy[exId] = [...copy[exId]];
-      copy[exId][idx] = { ...copy[exId][idx], ...patch };
-      return copy;
-    });
-  };
+  const activeExerciseId = useMemo(() => {
+    for (const ex of exercises) {
+      const targetSets = ex.default_sets ?? 3;
+      const savedMainSets = savedSets.filter(
+        (s) => s.exercise_id === ex.id && s.parent_set_id === null,
+      ).length;
+      if (savedMainSets < targetSets) return ex.id;
+    }
+    return null;
+  }, [exercises, savedSets]);
 
   const saveSet = useMutation<WorkoutSet, Error, SaveSetVars, SaveSetCtx>({
     mutationFn: async (vars) => {
@@ -170,6 +270,8 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
 
   const handleFinish = () => {
     startFinish(async () => {
+      // celebrate를 redirect 전에 호출 (페이지 떠나기 전 1프레임)
+      void celebrate();
       const result = await finishSession(session.id);
       if (result && result.ok === false) {
         toast.error(result.error);
@@ -177,61 +279,104 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
     });
   };
 
+  const hasSavedSetsFor = (exerciseId: string): boolean =>
+    savedSets.some(
+      (s) => s.exercise_id === exerciseId && s.parent_set_id === null,
+    );
+
+  const handleRemoveClick = (exerciseId: string) => {
+    if (hasSavedSetsFor(exerciseId)) {
+      // 저장된 세트 있음 — 확인 다이얼로그
+      setRemoveTarget(exerciseId);
+    } else {
+      // 즉시 삭제
+      confirmRemove(exerciseId);
+    }
+  };
+
+  const confirmRemove = (exerciseId: string) => {
+    startRemove(async () => {
+      const remaining = exercises
+        .filter((e) => e.id !== exerciseId)
+        .map((e) => e.id);
+      const result = await removeExerciseFromSession({
+        sessionId: session.id,
+        exerciseId,
+        remainingExerciseIds: remaining,
+      });
+      if (result && result.ok === false) {
+        toast.error(result.error);
+      }
+      setRemoveTarget(null);
+    });
+  };
+
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-xl font-bold">운동 진행 중</h1>
-        <p className="text-xs text-muted-foreground">
+        <h1 className="text-h2 font-extrabold text-text">운동 진행 중</h1>
+        <p className="text-caption text-text-muted">
           {new Date(session.started_at).toLocaleString("ko-KR")}
         </p>
       </header>
 
-      {exercises.map((ex) => (
-        <Card key={ex.id}>
-          <CardHeader>
-            <CardTitle className="text-base">{ex.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {drafts[ex.id].map((draft, idx) => {
-              const saved = isSaved(ex.id, draft.setNumber);
-              const pending = pendingKeys.has(setKey(ex.id, draft.setNumber));
-              return (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 text-sm"
-                >
-                  <span className="w-10 text-muted-foreground">
-                    {draft.setNumber}세트
-                  </span>
-                  <Input
-                    inputMode="decimal"
-                    type="number"
-                    step="0.5"
-                    placeholder="kg"
-                    className="flex-1"
-                    disabled={saved}
-                    value={draft.weightKg}
-                    onChange={(e) =>
-                      updateDraft(ex.id, idx, { weightKg: e.target.value })
+      {exercises.map((ex) => {
+        const prefill = prefillDefaults[ex.id];
+        return (
+          <ExerciseCardWrapper
+            key={ex.id}
+            exerciseId={ex.id}
+            isActive={ex.id === activeExerciseId}
+            isAnyActive={activeExerciseId !== null}
+            isRemoving={isRemoving}
+            onRemove={handleRemoveClick}
+          >
+            <div className="pr-8">
+              <div className="text-h3 font-extrabold text-text">{ex.name}</div>
+              {prefill && (prefill.weightKg != null || prefill.reps != null) && (
+                <div className="text-caption text-text-muted mt-0.5">
+                  지난번 {prefill.weightKg ?? "-"}kg × {prefill.reps ?? "-"}
+                </div>
+              )}
+            </div>
+            <div className="mt-1">
+              {drafts[ex.id].map((draft, idx) => {
+                const saved = isSaved(ex.id, draft.setNumber);
+                const isActive = ex.id === activeExerciseId && !saved;
+                const status = saved
+                  ? "done"
+                  : isActive
+                    ? "active"
+                    : "upcoming";
+                const isPending = pendingKeys.has(
+                  setKey(ex.id, draft.setNumber),
+                );
+
+                return (
+                  <SetRow
+                    key={idx}
+                    setNumber={draft.setNumber}
+                    status={status}
+                    weight={draft.weightKg}
+                    reps={draft.reps}
+                    onWeightChange={(v) =>
+                      setDrafts((prev) => {
+                        const copy = { ...prev };
+                        copy[ex.id] = [...copy[ex.id]];
+                        copy[ex.id][idx] = { ...draft, weightKg: v };
+                        return copy;
+                      })
                     }
-                  />
-                  <span className="text-muted-foreground">×</span>
-                  <Input
-                    inputMode="numeric"
-                    type="number"
-                    placeholder="회"
-                    className="flex-1"
-                    disabled={saved}
-                    value={draft.reps}
-                    onChange={(e) =>
-                      updateDraft(ex.id, idx, { reps: e.target.value })
+                    onRepsChange={(v) =>
+                      setDrafts((prev) => {
+                        const copy = { ...prev };
+                        copy[ex.id] = [...copy[ex.id]];
+                        copy[ex.id][idx] = { ...draft, reps: v };
+                        return copy;
+                      })
                     }
-                  />
-                  <Button
-                    size="sm"
-                    variant={saved ? "default" : "outline"}
-                    disabled={pending || saved || !draft.weightKg || !draft.reps}
-                    onClick={() => {
+                    checkDisabled={isPending || !draft.weightKg || !draft.reps}
+                    onCheck={() => {
                       const w = parseFloat(draft.weightKg);
                       const r = parseInt(draft.reps, 10);
                       if (
@@ -252,15 +397,13 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
                         reps: r,
                       });
                     }}
-                  >
-                    ✓
-                  </Button>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ))}
+                  />
+                );
+              })}
+            </div>
+          </ExerciseCardWrapper>
+        );
+      })}
 
       <Separator />
 
@@ -273,6 +416,33 @@ export function SessionRunner({ session, exercises, initialSets }: Props) {
       >
         {isFinishing ? "종료 중..." : "운동 종료"}
       </Button>
+
+      <Dialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>이 운동 삭제할까요?</DialogTitle>
+          </DialogHeader>
+          <p className="text-body text-text-muted">
+            이미 저장한 세트도 같이 지워집니다. 되돌릴 수 없어요.
+          </p>
+          <DialogFooter>
+            <DialogClose
+              disabled={isRemoving}
+              render={<Button variant="ghost">취소</Button>}
+            />
+            <Button
+              variant="default"
+              disabled={isRemoving}
+              onClick={() => removeTarget && confirmRemove(removeTarget)}
+            >
+              {isRemoving ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

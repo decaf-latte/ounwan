@@ -2,7 +2,10 @@ import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchSession } from "@/lib/queries/sessions";
 import { fetchUserExercises } from "@/lib/queries/exercises";
-import { fetchSessionSets } from "@/lib/queries/sets";
+import {
+  fetchSessionSets,
+  fetchLastMainSetsByExercise,
+} from "@/lib/queries/sets";
 import { SessionRunner } from "./SessionRunner";
 
 type PageProps = {
@@ -46,12 +49,18 @@ export default async function SessionPage({
     notFound();
   }
 
+  const prefillDefaults = await fetchLastMainSetsByExercise(
+    user.id,
+    exerciseIds,
+  );
+
   return (
-    <main className="p-4 max-w-md mx-auto pb-32">
+    <main className="p-5 max-w-md mx-auto pb-32">
       <SessionRunner
         session={session}
         exercises={selectedExercises}
         initialSets={existingSets}
+        prefillDefaults={prefillDefaults}
       />
     </main>
   );
