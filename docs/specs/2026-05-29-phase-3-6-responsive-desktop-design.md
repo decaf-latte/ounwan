@@ -223,6 +223,8 @@ export function BottomTab({ className }: { className?: string }) {
 
 ```tsx
 "use client";
+import { cn } from "@/lib/utils";
+import type { ExerciseWithBodyParts } from "@/lib/queries/exercises";
 
 type Props = {
   exercises: ExerciseWithBodyParts[];
@@ -244,13 +246,14 @@ export function ExerciseList({ exercises, activeExerciseId, completionByEx, onSe
             key={ex.id}
             type="button"
             onClick={() => onSelectExercise(ex.id)}
+            aria-current={active ? "true" : undefined}
             className={cn(
               "w-full text-left p-3 rounded-lg border transition-colors",
               active
                 ? "border-2 border-accent bg-accent-soft"
                 : done
                   ? "border-border bg-surface opacity-60"
-                  : "border-border bg-surface hover:bg-surface-soft",
+                  : "border-border bg-surface hover:bg-accent-soft",
             )}
           >
             <div className="text-body font-semibold text-text">
@@ -266,6 +269,8 @@ export function ExerciseList({ exercises, activeExerciseId, completionByEx, onSe
   );
 }
 ```
+
+> 토큰 일관성: hover 상태도 `bg-accent-soft` (warm off-white) 사용. `bg-surface-soft`는 존재하지 않음.
 
 #### `src/app/(app)/history/page.tsx` (NEW)
 
@@ -446,12 +451,31 @@ return (
 
 #### `ExerciseCardWrapper` (R2 fix)
 
+**Props 타입 변경:** 기존 `ExerciseCardWrapperProps`에 `exerciseName: string` 추가 (스크린리더 aria-label 개선용).
+
 ```tsx
-function ExerciseCardWrapper({ ... }) {
+type ExerciseCardWrapperProps = {
+  exerciseId: string;
+  exerciseName: string;       // 추가 — aria-label 명확성
+  isActive: boolean;
+  isAnyActive: boolean;
+  isRemoving: boolean;
+  onRemove: (exerciseId: string) => void;
+  children: React.ReactNode;
+};
+
+function ExerciseCardWrapper({ exerciseId, exerciseName, isActive, isAnyActive, isRemoving, onRemove, children }: ExerciseCardWrapperProps) {
   const [revealed, setRevealed] = useState(false);
 
   // 변경 1: swipe handler를 카드 본체 div에만 붙임 (X 버튼은 별도 sibling, swipe 트랙 영향 없음)
-  const swipeHandlers = useSwipeable({ ... });
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => setRevealed(true),
+    onSwipedRight: () => setRevealed(false),
+    preventScrollOnSwipe: true,
+    trackTouch: true,
+    trackMouse: false,
+    delta: 30,
+  });
 
   return (
     <div className="relative overflow-hidden rounded-xl mt-3">
@@ -462,7 +486,8 @@ function ExerciseCardWrapper({ ... }) {
         disabled={isRemoving}
         className={cn(
           "absolute top-2 right-2 z-10 p-2 rounded-md",
-          "text-text-muted hover:text-text hover:bg-accent-soft", // 변경 2: ghost → muted (가시성 향상)
+          // 변경 2: ghost → muted (가시성 향상). hover 시 진하게.
+          "text-text-muted hover:text-text hover:bg-accent-soft",
         )}
         aria-label={`${exerciseName} 운동 삭제`}
       >
@@ -470,10 +495,27 @@ function ExerciseCardWrapper({ ... }) {
       </button>
 
       {/* swipe-revealed 삭제 버튼 (기존 그대로) */}
-      <button ... className="absolute right-0 top-0 bottom-0 w-20 ...">삭제</button>
+      <button
+        type="button"
+        onClick={() => onRemove(exerciseId)}
+        disabled={isRemoving}
+        className="absolute right-0 top-0 bottom-0 w-20 bg-danger text-surface font-bold text-body flex items-center justify-center"
+        aria-label={`${exerciseName} 운동 삭제`}
+      >
+        삭제
+      </button>
 
       {/* 카드 본체 — swipe handler 여기에만 */}
-      <Card {...swipeHandlers} className={cn("p-4 ...", revealed && "-translate-x-20", ...)} onClick={...}>
+      <Card
+        {...swipeHandlers}
+        className={cn(
+          "p-4 relative transition-transform duration-200 ease-soft",
+          revealed && "-translate-x-20",
+          isActive && "border-2 border-accent",
+          !isActive && isAnyActive && "opacity-65",
+        )}
+        onClick={() => revealed && setRevealed(false)}
+      >
         {children}
       </Card>
     </div>
@@ -481,7 +523,7 @@ function ExerciseCardWrapper({ ... }) {
 }
 ```
 
-> 핵심 변화: X 버튼이 swipe-tracked div 밖으로 빠짐 → 모바일 터치가 swipe로 잘못 해석되지 않음. `z-10`으로 카드 위에 올라옴.
+> 핵심 변화: X 버튼이 swipe-tracked Card 밖으로 빠짐 → 모바일 터치가 swipe로 잘못 해석되지 않음. `z-10`으로 카드 위에 올라옴. 호출처(`SessionRunner.tsx`)에서 `<ExerciseCardWrapper exerciseName={ex.name} ...>` 추가 전달 필요.
 
 ---
 
@@ -642,6 +684,7 @@ grep -rn "@/app/dashboard\|@/app/workout" src tests
 | Bottom tab + iOS safe-area inset | 낮음 | `pb-safe` 유틸 추가, `env(safe-area-inset-bottom)` 적용 |
 | 라우트 그룹 이동으로 dev server hot reload 깨짐 | 낮음 | dev restart 1회로 해결 |
 | 데스크탑 sidebar 활성 표시 + 모바일 bottom tab 활성 표시가 다른 코드라 중복 | 낮음 | 둘 다 `usePathname().startsWith()`로 동일 로직. 추후 hook으로 추출 가능 (Plan 3.7) |
+| Sidebar 활성 링크의 `bg-accent text-surface` 다크모드 대비 (orange `#FF8B5C` × dark surface `#2D211A`) | 낮음 | Chunk 7 WCAG 검증 시 contrast 4.5:1 측정. 미달 시 active 텍스트를 `text-text` (검정/흰)으로 변경. |
 
 ---
 
@@ -680,3 +723,4 @@ grep -rn "@/app/dashboard\|@/app/workout" src tests
 |---------|------|--------|
 | v1 | 2026-05-29 | Initial draft after brainstorming session (사용자 선택: 레이아웃 C / lg breakpoint / bottom tab / 사이드 클릭 / 간단 history / X fix) |
 | v2 | 2026-05-29 | critic round 1 fixes: (MAJOR) `bg-surface-soft` 비존재 토큰 → `bg-accent-soft` 채택. SessionRunner JS/CSS 분기 모순 → CSS-only 단일화 + `allDone` 케이스 처리. Sidebar/BottomTab 누락 import(`cn`, `Button`) 추가. (MINOR) `w-52`=208px comment fix. BarChart3 dead button 명시(제거). `/workout/[sessionId]/page.tsx` + `/workout/new/page.tsx` `<main>` max-w lg 분기 명시. Sidebar/BottomTab active 매칭에 `matchPrefix` 도입(`/workout` 접두로 세션 페이지도 활성). (MISSING) 6.1 Import path migration checklist 신설(실제 영향받는 import 호출처 enumeration). `fetchRecentSessions` `!inner` 의도 명시. dashboard loading/error 신규 추가 결정. ExerciseList aria-current + 키보드 네비 노트. Chunk 1~8 통합 갱신. |
+| v3 | 2026-05-29 | critic round 2 nits fix: (NIT1) ExerciseList `cn` import 명시. (NIT2) ExerciseList `hover:bg-surface-soft` → `hover:bg-accent-soft` (phantom token 재출현 차단). (NIT3) Sidebar 활성 링크 다크모드 contrast 리스크를 Section 9 표에 추가 (Chunk 7 WCAG 측정). (NIT4) ExerciseCardWrapper props 타입에 `exerciseName: string` 추가 + 호출처 변경 명시(스크린리더 aria-label 개선). |
