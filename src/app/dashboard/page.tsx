@@ -25,7 +25,6 @@ export default async function DashboardPage() {
 
   return (
     <Dashboard
-      userEmail={user.email ?? ""}
       todaySession={todaySession}
       weeklyDates={Array.from(weeklyDates)}
       recentExercises={recentExercises}

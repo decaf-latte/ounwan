@@ -15,7 +15,6 @@ const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 const DEFAULT_EXERCISE_GOAL = 8;
 
 type Props = {
-  userEmail: string;
   todaySession: TodaySession | null;
   /** 0=월 ... 6=일. Set이 아닌 number[] — RSC→Client 직렬화 제약 (Set 미지원) */
   weeklyDates: number[];
