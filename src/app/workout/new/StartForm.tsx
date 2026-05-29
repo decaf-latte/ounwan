@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { recommendExercises } from "@/lib/workout/recommendation";
 import { startSession, saveTemplate } from "@/app/workout/actions";
+import { BodyPartChip } from "@/components/ui/body-part-chip";
 import type { StartFormProps } from "./start-form-types";
 
 export function StartForm({
@@ -89,29 +90,19 @@ export function StartForm({
 
   return (
     <div className="space-y-6">
-      <section>
-        <h2 className="text-sm font-semibold mb-2 text-muted-foreground">
+      <section className="mt-6">
+        <h2 className="text-caption font-semibold text-text-muted mb-2">
           부위 선택
         </h2>
         <div className="flex flex-wrap gap-2">
-          {bodyParts.map((bp) => {
-            const selected = selectedBP.has(bp.id);
-            return (
-              <button
-                key={bp.id}
-                type="button"
-                onClick={() => toggleBP(bp.id)}
-                className={
-                  "px-3 py-2 rounded-full border text-sm transition-colors " +
-                  (selected
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-background text-foreground border-border hover:bg-muted")
-                }
-              >
-                {bp.name_ko}
-              </button>
-            );
-          })}
+          {bodyParts.map((bp) => (
+            <BodyPartChip
+              key={bp.id}
+              label={bp.name_ko}
+              selected={selectedBP.has(bp.id)}
+              onClick={() => toggleBP(bp.id)}
+            />
+          ))}
         </div>
       </section>
 
@@ -165,17 +156,17 @@ export function StartForm({
               </CardContent>
             </Card>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-2 mt-3">
               {recommendations.map((r) => {
                 const ex = exerciseById.get(r.exerciseId);
                 if (!ex) return null;
                 return (
                   <li
                     key={r.exerciseId}
-                    className="rounded-md border p-3 text-sm"
+                    className="rounded-md border border-accent-soft bg-surface p-3 text-body"
                   >
-                    <div className="font-medium">{ex.name}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="font-bold text-text">{ex.name}</div>
+                    <div className="text-caption text-text-muted mt-0.5">
                       기본 {ex.default_sets ?? 3}세트
                       {ex.default_reps_min && ex.default_reps_max
                         ? ` · ${ex.default_reps_min}~${ex.default_reps_max}회`

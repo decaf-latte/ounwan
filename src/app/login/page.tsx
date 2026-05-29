@@ -1,11 +1,4 @@
 // Server Component — `<form action={...}>`로 Server Action 직접 호출, 'use client' 불필요
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { signInWithGoogle } from "./actions";
 
@@ -19,23 +12,19 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>오운완 로그인</CardTitle>
-          <CardDescription>Google 계정으로 시작하세요</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <form action={signInWithGoogle}>
-            <Button type="submit" className="w-full">
-              Google로 로그인
-            </Button>
-          </form>
-          {error && (
-            <p className="text-sm text-destructive">로그인 실패: {error}</p>
-          )}
-        </CardContent>
-      </Card>
+    <main className="p-8 max-w-md mx-auto flex flex-col items-center justify-center min-h-[80dvh]">
+      <h1 className="text-display font-extrabold text-text">오운완</h1>
+      <p className="text-body text-text-muted mt-2">오늘도 운동 잘 했어요</p>
+
+      <form action={signInWithGoogle} className="w-full mt-8">
+        <Button type="submit" size="lg" className="w-full">
+          Google로 시작하기
+        </Button>
+      </form>
+
+      {error && (
+        <p className="text-caption text-danger mt-3">로그인 실패: {error}</p>
+      )}
     </main>
   );
 }

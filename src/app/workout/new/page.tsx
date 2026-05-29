@@ -21,8 +21,11 @@ export default async function NewWorkoutPage() {
   ]);
 
   return (
-    <main className="p-4 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-4">운동 시작</h1>
+    <main className="p-5 max-w-md mx-auto">
+      <div className="text-label text-accent-strong uppercase">새 운동</div>
+      <h1 className="text-display font-extrabold mt-1 text-text">
+        오늘 뭐 할까요?
+      </h1>
       <StartForm
         bodyParts={bodyParts}
         exercises={exercises}

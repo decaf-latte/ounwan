@@ -122,3 +122,43 @@ export async function finishSession(
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }
+
+export type RemoveExerciseResult = { ok: false; error: string };
+
+/**
+ * 세션에서 운동 1개 제거.
+ * 1. 해당 운동의 모든 세트 (drop set 포함) CASCADE 삭제
+ * 2. URL의 ?exercises= 파라미터에서 해당 ID 제거 후 같은 페이지로 redirect
+ */
+export async function removeExerciseFromSession(input: {
+  sessionId: string;
+  exerciseId: string;
+  remainingExerciseIds: string[]; // 클라가 알고 있는 현재 목록 - 삭제된 ID
+}): Promise<RemoveExerciseResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // session_id + exercise_id 조합으로 모든 세트 삭제
+  // RLS는 workout_sets via session 정책으로 본인 데이터만 허용 — exercise_id 조건은 명시 안전장치
+  const { error } = await supabase
+    .from("workout_sets")
+    .delete()
+    .eq("session_id", input.sessionId)
+    .eq("exercise_id", input.exerciseId);
+
+  if (error) {
+    console.error("removeExerciseFromSession failed", error);
+    return { ok: false, error: "운동 삭제 실패" };
+  }
+
+  if (input.remainingExerciseIds.length === 0) {
+    // 더 이상 운동 없음 → 대시보드로
+    redirect("/dashboard");
+  }
+
+  const exParam = encodeURIComponent(input.remainingExerciseIds.join(","));
+  redirect(`/workout/${input.sessionId}?exercises=${exParam}`);
+}

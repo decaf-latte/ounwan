@@ -1,31 +1,34 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { signOut } from "./actions";
+import {
+  fetchTodaySession,
+  fetchWeeklySessionDates,
+} from "@/lib/queries/sessions";
+import { fetchRecentExerciseHistory } from "@/lib/queries/sets";
+import { Dashboard } from "./Dashboard";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect("/login");
 
+  const [todaySession, weeklyDates, recentExercises] = await Promise.all([
+    fetchTodaySession(user.id),
+    fetchWeeklySessionDates(user.id),
+    fetchRecentExerciseHistory(user.id, 2),
+  ]);
+
+  const now = new Date();
+  const todayDayIndex = (now.getDay() + 6) % 7; // 월=0
+
   return (
-    <main className="p-8 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-4">대시보드</h1>
-      <p className="mb-4">로그인됨: {user.email}</p>
-      <Link href="/workout/new" className="block mb-4">
-        <Button className="w-full" size="lg">
-          운동 시작
-        </Button>
-      </Link>
-      <form action={signOut}>
-        <Button type="submit" variant="outline">
-          로그아웃
-        </Button>
-      </form>
-    </main>
+    <Dashboard
+      todaySession={todaySession}
+      weeklyDates={Array.from(weeklyDates)}
+      recentExercises={recentExercises}
+      todayDayIndex={todayDayIndex}
+    />
   );
 }
