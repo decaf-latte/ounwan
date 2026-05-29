@@ -1,130 +1,179 @@
+/* src/app/globals.css */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────
+   1. 시맨틱 토큰 → Tailwind 클래스 노출
+   ───────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
+  /* 색상 */
+  --color-bg-from: var(--bg-from);
+  --color-bg-to: var(--bg-to);
+  --color-bg-flat: var(--bg-flat);
+  --color-surface: var(--surface);
   --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-ghost: var(--text-ghost);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+
+  /* shadcn alias (compat layer — 기존 컴포넌트 .tsx 수정 없이 자동 적용) */
+  --color-background: var(--bg-flat);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--text);
+  --color-secondary: var(--accent-soft);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--accent-soft);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent-foreground: var(--text);
+  --color-border: var(--accent-soft);
+  --color-input: var(--accent-soft);
+  --color-ring: var(--accent);
+  --color-destructive: var(--danger);
+
+  /* 폰트 */
+  --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont,
+               'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --font-heading: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont,
+                  'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+
+  /* 타이포 사이즈 (Tailwind v4가 text-* 클래스로 노출) */
+  --text-tiny: 10px;
+  --text-label: 11px;
+  --text-caption: 12px;
+  --text-body: 14px;
+  --text-h3: 16px;
+  --text-h2: 24px;
+  --text-stat-l: 28px;
+  --text-display: 36px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+
+  /* Easing */
+  --ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ─────────────────────────────────────────────────────────
+   2. 라이트 모드 변수
+   ───────────────────────────────────────────────────────── */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* 시맨틱 색상 */
+  --bg-from: #FFF8EE;
+  --bg-to: #FFEDD9;
+  --bg-flat: #FFF8EE;
+  --surface: #FFFFFF;
+  --accent: #E8763D;
+  --accent-soft: #FFEDD9;
+  --accent-strong: #B8704A;
+  --text: #2A1F15;
+  --text-muted: #8B6B4F;
+  --text-ghost: #9A7A56;
+  --success: #E8763D;
+  --danger: #C44A4A;
+  --surface-shadow: 0 2px 12px rgba(180, 100, 50, 0.06);
+  --radius: 0.875rem;
+
+  /* shadcn raw CSS vars — sonner.tsx, card.tsx 등이 inline style/className에서 직접 참조 */
+  --background: var(--bg-flat);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--text);
+  --secondary: var(--accent-soft);
+  --secondary-foreground: var(--text);
+  --muted: var(--accent-soft);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--text);
+  --border: var(--accent-soft);
+  --input: var(--accent-soft);
+  --ring: var(--accent);
+  --destructive: var(--danger);
 }
 
+/* ─────────────────────────────────────────────────────────
+   3. 다크 모드 변수 (next-themes가 .dark 클래스 토글)
+   ───────────────────────────────────────────────────────── */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --bg-from: #1A1410;
+  --bg-to: #241B14;
+  --bg-flat: #1A1410;
+  --surface: #2D211A;
+  --accent: #FF8B5C;
+  --accent-soft: #3D2D22;
+  --accent-strong: #C97B5C;
+  --text: #F5EBE0;
+  --text-muted: #A89178;
+  --text-ghost: #856B4B;
+  --success: #FF8B5C;
+  --danger: #E07B7B;
+  --surface-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+
+  /* raw vars 다크 모드 — light :root와 동일한 alias 구조. 값은 .dark 위 토큰이 자동 적용 */
+  --background: var(--bg-flat);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--text);
+  --secondary: var(--accent-soft);
+  --secondary-foreground: var(--text);
+  --muted: var(--accent-soft);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--text);
+  --border: var(--accent-soft);
+  --input: var(--accent-soft);
+  --ring: var(--accent);
+  --destructive: var(--danger);
 }
 
+/* ─────────────────────────────────────────────────────────
+   4. Reduced motion
+   ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   5. Base
+   ───────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
+  }
+  body {
+    color: var(--text);
+    background: linear-gradient(160deg, var(--bg-from) 0%, var(--bg-to) 100%);
+    min-height: 100dvh;
   }
 }
