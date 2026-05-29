@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 ```
 
-> 주: `Sidebar`는 220px 고정 폭 (`w-52`). 메인 영역의 `lg:max-w-[calc(100vw-13rem)]`은 viewport - sidebar 폭으로 overflow 방지.
+> 주: `Sidebar`는 **208px 고정 폭** (`w-52` = 13rem). 메인 영역의 `lg:max-w-[calc(100vw-13rem)]`은 viewport - sidebar 폭으로 overflow 방지.
 
 #### `src/components/layout/Sidebar.tsx`
 
@@ -112,30 +112,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Dumbbell, BarChart3, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/app/(app)/dashboard/actions";
 
+/**
+ * matchPrefix: 활성 매칭 prefix. "/workout/new"의 href에 대해 "/workout/<id>"도 활성으로 표시.
+ * - 대시보드: "/dashboard"
+ * - 운동: "/workout" (← /workout/new, /workout/[sessionId] 모두 활성)
+ * - 기록: "/history"
+ */
 const NAV = [
-  { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
-  { href: "/workout/new", label: "운동 시작", icon: Dumbbell },
-  { href: "/history", label: "기록", icon: BarChart3 },
+  { href: "/dashboard", label: "대시보드", icon: LayoutDashboard, matchPrefix: "/dashboard" },
+  { href: "/workout/new", label: "운동 시작", icon: Dumbbell, matchPrefix: "/workout" },
+  { href: "/history", label: "기록", icon: BarChart3, matchPrefix: "/history" },
 ];
 
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   return (
-    <nav className={cn("w-52 flex-col p-4 bg-surface-soft border-r border-border", className)}>
+    <nav className={cn("w-52 flex-col p-4 bg-accent-soft border-r border-border", className)}>
       <Link href="/dashboard" className="text-h2 font-extrabold mb-6 block">오운완</Link>
       <ul className="flex-1 space-y-1">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
+        {NAV.map(({ href, label, icon: Icon, matchPrefix }) => {
+          const active = pathname.startsWith(matchPrefix);
           return (
             <li key={href}>
               <Link
                 href={href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-md text-body transition-colors",
-                  active ? "bg-accent text-surface font-semibold" : "text-text-muted hover:bg-accent-soft",
+                  active ? "bg-accent text-surface font-semibold" : "text-text-muted hover:bg-surface",
                 )}
               >
                 <Icon className="w-4 h-4" /> {label}
@@ -157,6 +166,8 @@ export function Sidebar({ className }: { className?: string }) {
 }
 ```
 
+> 토큰 결정: `bg-accent-soft`(warm off-white `#FFEDD9` / dark `#3D2D22`)로 sidebar 배경 적용. 새로운 surface-soft 토큰을 추가하지 않고 기존 토큰 활용.
+
 #### `src/components/layout/BottomTab.tsx`
 
 ```tsx
@@ -164,11 +175,12 @@ export function Sidebar({ className }: { className?: string }) {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Dumbbell, BarChart3 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/dashboard", label: "홈", icon: LayoutDashboard },
-  { href: "/workout/new", label: "운동", icon: Dumbbell },
-  { href: "/history", label: "기록", icon: BarChart3 },
+  { href: "/dashboard", label: "홈", icon: LayoutDashboard, matchPrefix: "/dashboard" },
+  { href: "/workout/new", label: "운동", icon: Dumbbell, matchPrefix: "/workout" },
+  { href: "/history", label: "기록", icon: BarChart3, matchPrefix: "/history" },
 ];
 
 export function BottomTab({ className }: { className?: string }) {
@@ -181,8 +193,8 @@ export function BottomTab({ className }: { className?: string }) {
         className,
       )}
     >
-      {TABS.map(({ href, label, icon: Icon }) => {
-        const active = pathname.startsWith(href);
+      {TABS.map(({ href, label, icon: Icon, matchPrefix }) => {
+        const active = pathname.startsWith(matchPrefix);
         return (
           <Link
             key={href}
@@ -303,8 +315,8 @@ export default async function HistoryPage() {
 #### `Dashboard.tsx`
 
 - `<main>` 클래스: `p-5 max-w-md mx-auto pb-32` → `p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5`
-  - 모바일은 그대로
-  - lg+은 max-w-5xl로 펼치고 bottom 패딩 제거 (sidebar에서 nav 처리)
+  - 모바일은 그대로 (BottomTab 위 14h 잠식되므로 `pb-32` 유지)
+  - lg+은 max-w-5xl로 펼치고 bottom 패딩 축소 (sidebar nav 사용, BottomTab 없음)
 - 진행 카드 + 주간 칩 + 최근 운동 영역을 lg에서 grid 2x2로:
   ```tsx
   <section className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -313,51 +325,124 @@ export default async function HistoryPage() {
     <RecentExercisesCard className="lg:col-span-2" />
   </section>
   ```
-- 헤더의 ThemeToggle + 로그아웃은 `lg:hidden`으로 (sidebar에서 처리)
-- 하단 fixed CTA(`fixed bottom-5 ...`)는 `lg:static lg:mt-6`으로
+- 헤더의 ThemeToggle + 로그아웃은 `lg:hidden`으로 (sidebar에서 처리). lg- 에서는 그대로.
+- **하단 fixed CTA(`fixed bottom-5 left-5 right-5 max-w-md mx-auto flex gap-2`) 처리 (R3 dead button fix 포함):**
+  - 현재 CTA는 운동 시작 큰 버튼 + BarChart3 outline 버튼(아이콘만, `aria-label="기록 보기"`, **onClick 없음 = 데드**)으로 구성.
+  - **변경:** BarChart3 `Button`을 `<Link href="/history">`로 감싸기 → 실제 /history 페이지로 이동. `aria-label`은 그대로.
+  - 모바일에서는 BottomTab의 "기록" 탭이 이미 있어 BarChart3 버튼이 중복. **선택지 두 개 중 하나:**
+    - 옵션 X1 (Recommended): BarChart3 outline 버튼을 **완전히 제거**. CTA는 "운동 시작" 단일 버튼만. 기록 접근은 BottomTab/Sidebar에서. UI 단순.
+    - 옵션 X2: BarChart3 버튼 유지하되 `<Link href="/history">`로. 모바일에선 BottomTab과 중복이지만 사용자가 익숙한 위치에서 빠른 진입.
+  - **결정: 옵션 X1 (제거).** 단일 CTA "운동 시작" + BottomTab/Sidebar nav의 "기록"으로 충분. 중복 제거로 시각 노이즈 감소.
+- 운동 시작 CTA의 `fixed bottom-5 ...`는 `lg:static lg:mt-6 lg:max-w-xs`로 변경 (lg+에선 main flow에 자연스럽게 배치, sidebar nav도 같은 메뉴 보유).
 
 #### `SessionRunner.tsx`
 
+**렌더링 전략: CSS-only 토글 (JS 분기 없음).** 모바일과 데스크탑 둘 다 동일한 운동 카드 N개를 렌더하되, Tailwind 클래스(`lg:hidden` / `hidden lg:block`)로 가시성만 토글. hydration mismatch 방지 + DOM 중복은 받아들임 (운동 카드 평균 5개 × 2 = 10개, 무시 가능한 비용).
+
 ```tsx
 const [userPickedExId, setUserPickedExId] = useState<string | null>(null);
+
 const computedActiveId = useMemo(() => {
-  // 기존 로직: 첫 미완료 운동
-  for (const ex of exercises) { ... }
+  for (const ex of exercises) {
+    const targetSets = ex.default_sets ?? 3;
+    const saved = savedSets.filter(
+      (s) => s.exercise_id === ex.id && s.parent_set_id === null,
+    ).length;
+    if (saved < targetSets) return ex.id;
+  }
   return null;
 }, [exercises, savedSets]);
-const activeExerciseId = userPickedExId ?? computedActiveId;
 
-// 사용자가 선택한 운동이 이미 완료되면 자동 해제
+// 사용자가 고른 운동이 완료되면 자동 해제 → computedActiveId가 다음 운동을 가리킴
 useEffect(() => {
-  if (userPickedExId) {
-    const targetSets = exercises.find((e) => e.id === userPickedExId)?.default_sets ?? 3;
-    const saved = savedSets.filter((s) => s.exercise_id === userPickedExId && s.parent_set_id === null).length;
-    if (saved >= targetSets) setUserPickedExId(null);
+  if (!userPickedExId) return;
+  const target = exercises.find((e) => e.id === userPickedExId);
+  if (!target) {
+    setUserPickedExId(null);
+    return;
   }
+  const targetSets = target.default_sets ?? 3;
+  const saved = savedSets.filter(
+    (s) => s.exercise_id === userPickedExId && s.parent_set_id === null,
+  ).length;
+  if (saved >= targetSets) setUserPickedExId(null);
 }, [savedSets, userPickedExId, exercises]);
+
+const activeExerciseId = userPickedExId ?? computedActiveId;
+const allDone = activeExerciseId === null;
 
 return (
   <div className="lg:flex lg:gap-6">
+    {/* lg+ 좌측 ExerciseList — 컴포넌트 자체가 hidden lg:block로 토글 */}
     <ExerciseList
       exercises={exercises}
       activeExerciseId={activeExerciseId}
       completionByEx={completionByEx}
       onSelectExercise={setUserPickedExId}
     />
-    <div className="flex-1 space-y-4">
-      {/* 기존 운동 카드 렌더 — 단, lg+에선 activeExerciseId 카드만 보여줄지 결정 필요 */}
-      {/* 결정: lg+에선 active 카드만 크게, 다른 카드는 ExerciseList에 이미 들어가 있으니 메인 영역에 안 보여줌 */}
-      {(lgUp ? exercises.filter((e) => e.id === activeExerciseId) : exercises).map((ex) => (
-        <ExerciseCardWrapper ... />
-      ))}
+
+    <div className="flex-1 space-y-4 min-w-0">
+      {/* 모바일: 모든 운동 카드 펼침 */}
+      <div className="space-y-4 lg:hidden">
+        {exercises.map((ex) => (
+          <ExerciseCardWrapper key={ex.id} exerciseId={ex.id} ...>
+            {/* draft rows */}
+          </ExerciseCardWrapper>
+        ))}
+      </div>
+
+      {/* lg+: active 카드만 1개 표시. 모든 운동 완료 시엔 완료 메시지 */}
+      <div className="hidden lg:block">
+        {allDone ? (
+          <div className="text-center py-12 space-y-2">
+            <p className="text-h2 font-extrabold text-accent">모든 운동 완료 🎉</p>
+            <p className="text-body text-text-muted">아래 버튼으로 세션을 끝낼 수 있어요.</p>
+          </div>
+        ) : (
+          exercises
+            .filter((ex) => ex.id === activeExerciseId)
+            .map((ex) => (
+              <ExerciseCardWrapper key={ex.id} exerciseId={ex.id} ...>
+                {/* 동일한 draft rows */}
+              </ExerciseCardWrapper>
+            ))
+        )}
+      </div>
+
       <Separator />
-      <Button onClick={handleFinish} ...>운동 종료</Button>
+      <Button
+        className="w-full"
+        size="lg"
+        disabled={isFinishing || savedSets.length === 0}
+        onClick={handleFinish}
+      >
+        {isFinishing ? "종료 중..." : "운동 종료"}
+      </Button>
     </div>
+
+    {/* 삭제 confirm Dialog — 변경 없음 */}
+    <Dialog ... />
   </div>
 );
 ```
 
-`lgUp` 판단은 CSS 미디어 쿼리만으로 처리 (JS 분기 없이 둘 다 렌더하고 `lg:hidden` / `hidden lg:block`으로 토글).
+> 두 카드 렌더가 같은 draft state + 같은 saveSet mutation을 공유하므로, 모바일에서 입력하던 값이 데스크탑 active 카드에 그대로 반영됨 (반대 동일). 두 트리는 같은 input value만 표시할 뿐 별도 state가 아님.
+
+> 모든 운동 완료 케이스(`allDone`): 데스크탑은 "모든 운동 완료" 메시지 + 운동 종료 CTA만. 모바일은 마지막 카드까지 보임 (스크롤로 자연 확인 가능).
+
+#### `src/app/(app)/workout/[sessionId]/page.tsx` (max-w 조정)
+
+`<main className="p-5 max-w-md mx-auto pb-32">` → `p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5`
+
+- 모바일은 그대로. BottomTab + 운동 종료 fixed CTA용 `pb-32` 유지.
+- lg+: `max-w-5xl`로 컨테이너 폭 확보. ExerciseList(`w-56` = 224px) + gap(24px) + active 운동 카드(나머지) 자연 배치 가능.
+
+#### `src/app/(app)/workout/new/page.tsx` (max-w 조정)
+
+`<main className="p-5 max-w-md mx-auto">` → `p-5 max-w-md lg:max-w-3xl mx-auto pb-32 lg:pb-5`
+
+- lg+에선 BodyPartChip + 추천 미리보기를 2-컬럼으로 펼치기 위해 폭 확보.
+- StartForm 내부에서 `lg:grid lg:grid-cols-2 lg:gap-6`로 좌측 chip + 우측 추천 분리 (이미 4.3 StartForm 항목에서 명시).
 
 #### `ExerciseCardWrapper` (R2 fix)
 
@@ -449,6 +534,8 @@ export async function fetchRecentSessions(
 
 > 한 번의 쿼리로 세션+세트+운동+부위 join. `bodyParts`는 unique deduplicated 한국어 이름 배열.
 
+> **의도된 동작:** `workout_sets!inner` 사용으로 **세트가 0개인 세션(시작했지만 세트 저장 안 한 채 종료)은 /history에 노출되지 않음.** Plan 3.1에서 "savedSets.length === 0이면 종료 버튼 비활성"으로 빈 세션 생성 자체를 막아두었기 때문에 실무상 거의 발생하지 않지만, 만약 DB에 빈 세션이 있어도 기록 리스트에서 제외되는 게 디자인 의도.
+
 ### 5.2 기존 쿼리 변경 없음
 
 `fetchTodaySession`, `fetchWeeklySessionDates`, `fetchRecentExerciseHistory`, `fetchLastMainSetsByExercise` — 모두 그대로.
@@ -467,16 +554,49 @@ export async function fetchRecentSessions(
 | `/workout/[sessionId]` | page.tsx (4 쿼리) | SessionRunner | yes + session.user_id 검증 | ✅ |
 | `/history` | page.tsx (1 쿼리) | (없음, 카드는 server-rendered) | yes | ✅ |
 
+### 6.1 Import path migration checklist
+
+`(app)` 라우트 그룹 이동으로 변경되는 import 경로 (Chunk 1에서 일괄 처리):
+
+**이동되는 파일 (`src/app/` → `src/app/(app)/`)**
+- `dashboard/page.tsx`, `dashboard/Dashboard.tsx`, `dashboard/actions.ts`
+- `workout/actions.ts`
+- `workout/new/page.tsx`, `workout/new/StartForm.tsx`, `workout/new/start-form-types.ts`, `workout/new/loading.tsx`, `workout/new/error.tsx`
+- `workout/[sessionId]/page.tsx`, `workout/[sessionId]/SessionRunner.tsx`, `workout/[sessionId]/loading.tsx`, `workout/[sessionId]/error.tsx`, `workout/[sessionId]/not-found.tsx`
+
+**Import 경로 변경 (`@/app/dashboard/` 또는 `@/app/workout/` → `@/app/(app)/dashboard/` 또는 `@/app/(app)/workout/`)**
+
+이 import들을 grep으로 확인:
+```bash
+grep -rn "@/app/dashboard\|@/app/workout" src tests
+```
+
+실제로 영향받는 알려진 호출처 (Phase 3.5 코드 기준):
+- `src/app/(app)/dashboard/Dashboard.tsx:10`: `import { signOut } from "@/app/dashboard/actions"` → `"@/app/(app)/dashboard/actions"`
+- `src/app/(app)/workout/[sessionId]/SessionRunner.tsx:25-26`: `import { finishSession, removeExerciseFromSession } from "@/app/workout/actions"` → `"@/app/(app)/workout/actions"`
+- `src/app/(app)/workout/new/StartForm.tsx`: `import { startSession, saveTemplate } from "@/app/workout/actions"` → `"@/app/(app)/workout/actions"`
+- `src/components/layout/Sidebar.tsx`: 신규 작성 시 `import { signOut } from "@/app/(app)/dashboard/actions"`
+- `src/app/page.tsx` (루트 / → /dashboard redirect): `redirect("/dashboard")` URL 경로는 그대로 (route group은 URL에 영향 없음)
+- 테스트 파일에 `@/app/dashboard|workout` 사용처 있으면 동일하게 갱신
+
+**확인 단계 (Chunk 1 끝):**
+1. `grep -rn "@/app/dashboard\|@/app/workout" src tests` → 옛 경로 잔존 0
+2. `pnpm tsc --noEmit` → 0 errors
+3. `pnpm test` → 17/17 PASS (회귀)
+
+**URL 경로는 변경 없음.** route group `(app)`은 폴더 구조용. URL `/dashboard`, `/workout/new`, `/workout/[id]`, `/history`, `/login`은 모두 동일.
+
 ---
 
 ## 7. 오류 처리 / UX states
 
 - `(app)/layout.tsx`에 AppShell만 적용. 인증 가드는 각 페이지의 RSC에서 (기존과 동일).
 - 신규 `(app)/history/loading.tsx` + `(app)/history/error.tsx` 추가 — Phase 3.5와 동일한 톤 (`text-h2 font-extrabold`, `잠시 멈췄어요`, 등).
-- 기존 5개 loading/error/not-found는 `(app)/` 그룹 안으로 이동 시 그대로 작동 (변경 없음).
-- BottomTab 활성 표시: `usePathname()` startsWith 매칭. `/dashboard` 와 `/dashboard/anything` 모두 활성.
-- Sidebar도 동일 패턴.
+- 신규 `(app)/dashboard/loading.tsx` + `(app)/dashboard/error.tsx` 추가 — Phase 3.5에는 없던 것. 4개 RSC 쿼리(today/weekly/recent/...) 중 하나라도 느려지거나 실패 시 UX 보호. 톤은 history와 동일.
+- 기존 5개 loading/error/not-found(`workout/new/loading.tsx`, `workout/new/error.tsx`, `workout/[sessionId]/loading.tsx`, `workout/[sessionId]/error.tsx`, `workout/[sessionId]/not-found.tsx`)는 `(app)/` 그룹 안으로 이동 시 그대로 작동 (변경 없음, 단 import 경로 갱신).
+- BottomTab/Sidebar 활성 표시: `matchPrefix`로 `usePathname().startsWith(matchPrefix)` 매칭. `/workout/new`, `/workout/[id]`도 "운동" 탭 활성으로 표시.
 - AppShell이 SSR 시 모바일/데스크탑 둘 다 렌더 → hydration 후 CSS 미디어 쿼리로 토글. hydration warning 발생 안 함 (둘 다 markup에 존재).
+- **접근성:** ExerciseList의 운동 카드 `<button>`에 `aria-current={active ? "true" : undefined}` 부착. 키보드 Tab 이동 자동 지원. 화살표 키 네비게이션은 Plan 3.7에서 검토 (이번 스코프 외).
 
 ---
 
@@ -531,16 +651,16 @@ export async function fetchRecentSessions(
 
 | Chunk | 내용 | 예상 |
 |------:|------|------|
-| 1 | `(app)` 라우트 그룹 생성 + 기존 페이지 이동 + 빌드 확인 | 0.5h |
-| 2 | AppShell + Sidebar + BottomTab + 신규 컴포넌트 테스트 | 2h |
-| 3 | Dashboard lg 그리드 + 모바일/데스크탑 nav 충돌 정리 | 1.5h |
-| 4 | SessionRunner 2-컬럼 + ExerciseList + userPickedExId state | 2.5h |
-| 5 | ExerciseCardWrapper X 가시성 + swipe handler 격리 + 회귀 테스트 | 1h |
-| 6 | /history page + fetchRecentSessions query | 2h |
-| 7 | loading/error 페이지 lg 분기 + WCAG/manual E2E 점검 | 1h |
-| 8 | build / test / log / PR / 머지 / `v0.3.6` 태그 | 1h |
+| 1 | `(app)` 라우트 그룹 생성 + 기존 페이지 이동 + **6.1 import path checklist 일괄 적용** + 빌드/회귀 17 PASS | 1h |
+| 2 | AppShell + Sidebar + BottomTab + `pb-safe` 유틸 추가 + 컴포넌트 테스트 3개 | 2h |
+| 3 | Dashboard lg 그리드 + BarChart3 데드 버튼 제거 + 헤더 액션 lg 토글 | 1.5h |
+| 4 | SessionRunner CSS-only 2-컬럼 + ExerciseList + userPickedExId state + allDone 처리 + `/workout/[sessionId]/page.tsx` `<main>` max-w 변경 | 2.5h |
+| 5 | ExerciseCardWrapper X 가시성(`text-text-muted`) + swipe handler 격리(X 버튼을 swipe div 밖 absolute sibling으로) + 회귀 테스트 | 1h |
+| 6 | /history page + fetchRecentSessions query (`workout_sets!inner` 의도 명시) + history loading/error 페이지 | 2h |
+| 7 | dashboard loading/error 페이지 신규 + 기존 loading.tsx에 lg sidebar skeleton 분기 + WCAG/manual E2E 점검 | 1h |
+| 8 | build / test 21+ / log / PR / 머지 / `v0.3.6-responsive-desktop` 태그 | 1h |
 
-총 ~11.5h (1.5일 작업).
+총 ~12h (1.5일 작업).
 
 ---
 
@@ -559,3 +679,4 @@ export async function fetchRecentSessions(
 | Version | Date | Change |
 |---------|------|--------|
 | v1 | 2026-05-29 | Initial draft after brainstorming session (사용자 선택: 레이아웃 C / lg breakpoint / bottom tab / 사이드 클릭 / 간단 history / X fix) |
+| v2 | 2026-05-29 | critic round 1 fixes: (MAJOR) `bg-surface-soft` 비존재 토큰 → `bg-accent-soft` 채택. SessionRunner JS/CSS 분기 모순 → CSS-only 단일화 + `allDone` 케이스 처리. Sidebar/BottomTab 누락 import(`cn`, `Button`) 추가. (MINOR) `w-52`=208px comment fix. BarChart3 dead button 명시(제거). `/workout/[sessionId]/page.tsx` + `/workout/new/page.tsx` `<main>` max-w lg 분기 명시. Sidebar/BottomTab active 매칭에 `matchPrefix` 도입(`/workout` 접두로 세션 페이지도 활성). (MISSING) 6.1 Import path migration checklist 신설(실제 영향받는 import 호출처 enumeration). `fetchRecentSessions` `!inner` 의도 명시. dashboard loading/error 신규 추가 결정. ExerciseList aria-current + 키보드 네비 노트. Chunk 1~8 통합 갱신. |
