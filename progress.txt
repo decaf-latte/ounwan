@@ -1,17 +1,36 @@
-# Phase 3.5 Design System Renewal — progress
+# Phase 3.6 Responsive Desktop — progress
 
 ## Environment / learnings
 - Project root: /Users/jeonhyejin/Desktop/사이드프로젝트/gym-routine-app
-- Korean path breaks the Read tool (unicode); use Write fresh or bash cat for files under this dir.
-- vitest env = node (not jsdom). motion.test stubs window via vi.stubGlobal — fine. progress-ring test only tests pure computeDashOffset — fine.
-- tsconfig path alias "@/" -> ./src ; vitest alias mirrors it.
-- pnpm 11.2.2, node 23, Next 16.2.6 / React 19.2.4 / Tailwind v4 / next-themes 0.4.6 already installed.
-- DB types confirmed: body_parts.name_ko, workout_sets(parent_set_id,weight_kg,reps,created_at,exercise_id,session_id), exercises.user_id, workout_sessions.user_id/started_at.
+- pnpm 11.2.2, Next 16, React 19, Tailwind v4, vitest 4.
+- vitest env default = node. Component tests need `// @vitest-environment jsdom` per file.
+- vitest globals NOT enabled → testing-library auto-cleanup does NOT run. Multi-test
+  component files must `import { cleanup }` + `afterEach(cleanup)` (see exercise-list test).
+- Added devDeps: @testing-library/react 16.3.2, @testing-library/jest-dom 6.9.1, jsdom 29.1.1.
+  jest-dom matchers wired via `import "@testing-library/jest-dom/vitest"` in tests/setup.ts.
+- Stale `.next/types/validator.ts` can report old route-group paths after git mv; `rm -rf .next`
+  before build to regenerate. Source tsc is clean.
+- eslint react-hooks rule `set-state-in-effect` FORBIDS setState() inside useEffect. The
+  userPickedExId auto-clear was reimplemented as pure useMemo derivation (effectivePickedId).
 
-## US-001 Chunk 1 — DONE (commits cd1ee0f, 349ab35, 2844982)
-- Added canvas-confetti ^1.9.4 + react-swipeable ^7.0.2 + @types/canvas-confetti ^1.9.0.
-- globals.css fully replaced: Pretendard CDN, @theme inline tokens (incl. text-size tokens added early from Chunk 3.2.2), :root light + .dark warm-brown, raw shadcn vars, reduced-motion block, gradient body.
-- theme-provider.tsx created; layout.tsx Geist removed + ThemeProvider mounted outside QueryProvider + suppressHydrationWarning.
-- Verified: pnpm tsc --noEmit = 0 errors, pnpm lint clean.
-- NOTE: text-size tokens (--text-tiny..--text-display) already in globals.css so Chunk 3.2.2 is pre-done.
-- Visual browser check (gradient/Pretendard/dark toggle) deferred to Chunk 6 manual E2E.
+## Chunk status
+- C1 route group migration — DONE (41ff585). 17 tests, URLs unchanged.
+- C2 AppShell+Sidebar+BottomTab+pb-safe — DONE (72fd947). 20 tests (3 layout).
+- C3 Dashboard lg grid + BarChart3 removal — DONE (6cf4430).
+- C4 SessionRunner 2-col + ExerciseList + userPickedExId — DONE (bec3f6a). 22 tests (2 exercise-list).
+- C5 ExerciseCardWrapper X isolation + exerciseName — DONE (8518dea).
+- C6 /history + fetchRecentSessions + loading/error — DONE (2a64a68). /history route built.
+- C7 dashboard loading/error + lg skeleton + WCAG — in progress.
+
+## WCAG contrast analysis (Chunk 7) — computed from globals.css tokens (light mode)
+Coral palette is low-contrast on white/cream (carried over from Phase 3.5).
+- accent #E8763D, surface #FFFFFF, text #2A1F15, text-muted #8B6B4F.
+- Sidebar active was `bg-accent text-surface` = WHITE on coral = ~2.96:1 → FAILS 4.5:1.
+  FIXED → `bg-accent text-text` (dark on coral) = ~5.43:1 PASS. (plan Step 7.3.1 mitigation)
+- Sidebar inactive `text-text-muted` on accent-soft/surface = ~4.87:1 PASS.
+- X button `text-text-muted` (#8B6B4F) on white card = ~4.87:1 PASS.
+- BottomTab inactive `text-text-muted` on surface = ~4.87:1 PASS.
+- BottomTab active `text-accent` (coral on white) = ~2.96:1 — below 4.5 for the 12px label.
+  This is the shipped Phase 3.5 mobile brand token. Non-color cues present: aria-current="page"
+  (programmatic) + icon shape. Flagged for a palette-darkening pass in Plan 3.7 (out of 3.6 scope).
+- All nav active states carry aria-current for screen-reader independence from color.

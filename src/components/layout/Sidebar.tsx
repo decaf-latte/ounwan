@@ -52,7 +52,7 @@ export function Sidebar({ className }: { className?: string }) {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-md text-body transition-colors",
                   active
-                    ? "bg-accent text-surface font-semibold"
+                    ? "bg-accent text-text font-semibold"
                     : "text-text-muted hover:bg-surface",
                 )}
               >
