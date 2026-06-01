@@ -127,3 +127,102 @@ export async function fetchWeeklySessionDates(
   }
   return set;
 }
+
+export type RecentSession = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  /** unique 한국어 부위 이름 */
+  bodyParts: string[];
+  /** unique exercise_id 수 */
+  exerciseCount: number;
+  /** main set만 (parent_set_id IS NULL) */
+  setCount: number;
+  /** ended_at 있으면 분 단위, 없으면 null */
+  durationMin: number | null;
+};
+
+/**
+ * 최근 N주 세션 목록 — /history 페이지용.
+ * workout_sets!inner 사용으로 세트 0개 세션은 의도적으로 제외.
+ */
+export async function fetchRecentSessions(
+  userId: string,
+  weeksBack: number = 4,
+): Promise<RecentSession[]> {
+  const supabase = await createClient();
+  const cutoff = new Date(
+    Date.now() - weeksBack * 7 * 86_400_000,
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(
+      `
+      id,
+      started_at,
+      ended_at,
+      workout_sets!inner (
+        exercise_id,
+        parent_set_id,
+        exercises!inner (
+          exercise_body_parts (
+            body_parts ( name_ko )
+          )
+        )
+      )
+    `,
+    )
+    .eq("user_id", userId)
+    .gte("started_at", cutoff)
+    .order("started_at", { ascending: false });
+
+  if (error) throw error;
+
+  type RecentSetRow = {
+    exercise_id: string;
+    parent_set_id: string | null;
+    exercises: {
+      exercise_body_parts: {
+        body_parts: { name_ko: string } | null;
+      }[];
+    } | null;
+  };
+
+  return (data ?? []).map((row) => {
+    const sets = (row.workout_sets ?? []) as RecentSetRow[];
+
+    const exerciseIds = new Set<string>();
+    const bodyPartNames = new Set<string>();
+    let mainSetCount = 0;
+
+    for (const s of sets) {
+      exerciseIds.add(s.exercise_id);
+      if (s.parent_set_id === null) mainSetCount += 1;
+      for (const ebp of s.exercises?.exercise_body_parts ?? []) {
+        if (ebp.body_parts?.name_ko) {
+          bodyPartNames.add(ebp.body_parts.name_ko);
+        }
+      }
+    }
+
+    const durationMin =
+      row.ended_at && row.started_at
+        ? Math.round(
+            (new Date(row.ended_at).getTime() -
+              new Date(row.started_at).getTime()) /
+              60_000,
+          )
+        : null;
+
+    return {
+      id: row.id,
+      started_at: row.started_at,
+      ended_at: row.ended_at,
+      bodyParts: Array.from(bodyPartNames),
+      exerciseCount: exerciseIds.size,
+      setCount: mainSetCount,
+      durationMin,
+    };
+  });
+}
