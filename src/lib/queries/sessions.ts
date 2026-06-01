@@ -226,3 +226,84 @@ export async function fetchRecentSessions(
     };
   });
 }
+
+export type MonthSessionEntry = {
+  dayOfMonth: number;
+  sessionIds: string[];
+  bodyPartColors: string[];
+};
+
+/**
+ * 특정 월의 세션 목록 — 캘린더 도트 + 리스트용.
+ * @param month 1-indexed (1=Jan, 12=Dec). JS Date는 0-indexed라 내부에서 변환.
+ * workout_sets!inner: 세트 0개 세션 제외 (Phase 3.6과 일관).
+ * is_primary === true 만 도트로 표시.
+ */
+export async function fetchSessionsInMonth(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<MonthSessionEntry[]> {
+  const supabase = await createClient();
+  const start = new Date(year, month - 1, 1).toISOString();
+  const end = new Date(year, month, 1).toISOString();
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(
+      `
+      id,
+      started_at,
+      workout_sets!inner (
+        exercises!inner (
+          exercise_body_parts (
+            is_primary,
+            body_parts ( color )
+          )
+        )
+      )
+    `,
+    )
+    .eq("user_id", userId)
+    .gte("started_at", start)
+    .lt("started_at", end);
+
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    started_at: string;
+    workout_sets: Array<{
+      exercises: {
+        exercise_body_parts: Array<{
+          is_primary: boolean | null;
+          body_parts: { color: string | null } | null;
+        }>;
+      };
+    }>;
+  };
+
+  const byDay = new Map<number, MonthSessionEntry>();
+  for (const row of (data ?? []) as unknown as Row[]) {
+    const day = new Date(row.started_at).getDate();
+    if (!byDay.has(day)) {
+      byDay.set(day, { dayOfMonth: day, sessionIds: [], bodyPartColors: [] });
+    }
+    const entry = byDay.get(day)!;
+    if (!entry.sessionIds.includes(row.id)) {
+      entry.sessionIds.push(row.id);
+    }
+    for (const ws of row.workout_sets) {
+      for (const ebp of ws.exercises.exercise_body_parts) {
+        if (ebp.is_primary === true && ebp.body_parts?.color) {
+          if (!entry.bodyPartColors.includes(ebp.body_parts.color)) {
+            entry.bodyPartColors.push(ebp.body_parts.color);
+          }
+        }
+      }
+    }
+  }
+  return Array.from(byDay.values()).sort(
+    (a, b) => a.dayOfMonth - b.dayOfMonth,
+  );
+}
