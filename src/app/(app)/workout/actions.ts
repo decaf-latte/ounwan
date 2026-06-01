@@ -120,6 +120,7 @@ export async function finishSession(
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/history");
   redirect("/dashboard");
 }
 

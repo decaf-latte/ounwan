@@ -5,35 +5,38 @@ import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ui/progress-ring";
-import { DayChip } from "@/components/ui/day-chip";
+import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/app/(app)/dashboard/actions";
 import type { TodaySession } from "@/lib/queries/sessions";
 import type { RecentExercise } from "@/lib/queries/sets";
 
-const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 const DEFAULT_EXERCISE_GOAL = 8;
 
 type Props = {
   todaySession: TodaySession | null;
-  /** 0=월 ... 6=일. Set이 아닌 number[] — RSC→Client 직렬화 제약 (Set 미지원) */
-  weeklyDates: number[];
+  year: number;
+  /** 1-indexed */
+  month: number;
+  dotsByDate: Record<number, DayEntry>;
   recentExercises: RecentExercise[];
-  /** 0=월 ... 6=일 */
-  todayDayIndex: number;
+  todayDayOfMonth: number;
+  /** "월" / "화" / ... — hydration mismatch 방지 위해 서버 계산 */
+  todayDayLabel: string;
+  /** "6월 1일" */
+  todayFormatted: string;
 };
-
-function formatDate(d: Date) {
-  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
-}
 
 export function Dashboard({
   todaySession,
-  weeklyDates,
+  year,
+  month,
+  dotsByDate,
   recentExercises,
-  todayDayIndex,
+  todayDayOfMonth,
+  todayDayLabel,
+  todayFormatted,
 }: Props) {
-  const today = new Date();
   const completed = todaySession !== null;
   const subline = completed
     ? `오늘 ${todaySession.bodyParts.join(", ")} 잘 끝냈어요`
@@ -44,7 +47,7 @@ export function Dashboard({
       <div className="flex items-start justify-between">
         <div>
           <div className="text-label text-accent-strong uppercase">
-            {DAY_LABELS[todayDayIndex]} · {formatDate(today)}
+            {todayDayLabel} · {todayFormatted}
           </div>
           <h1 className="text-display font-extrabold mt-1 text-text">
             {completed ? "오운완 ✓" : "오운완"}
@@ -87,19 +90,16 @@ export function Dashboard({
           </div>
         </Card>
 
-        {/* 이번 주 */}
+        {/* 이번 달 미니 캘린더 */}
         <Card className="p-4">
-          <div className="text-h3 font-extrabold">이번 주</div>
-          <div className="flex gap-1.5 mt-2.5">
-            {DAY_LABELS.map((label, i) => {
-              const state: "done" | "missed" | "today" = weeklyDates.includes(i)
-                ? "done"
-                : i === todayDayIndex
-                  ? "today"
-                  : "missed";
-              return <DayChip key={label} day={label} state={state} />;
-            })}
-          </div>
+          <div className="text-h3 font-extrabold mb-2.5">이번 달</div>
+          <MiniCalendar
+            year={year}
+            month={month}
+            todayDayOfMonth={todayDayOfMonth}
+            dotsByDate={dotsByDate}
+            size="sm"
+          />
         </Card>
 
         {/* 최근 운동 */}

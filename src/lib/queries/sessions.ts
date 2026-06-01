@@ -1,6 +1,8 @@
 // src/lib/queries/sessions.ts
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database.types";
+import { estimateOneRepMax, calcSetVolume } from "@/lib/workout/one-rep-max";
+import { mapSessionDetailRow } from "./session-detail-mapper";
 
 export type WorkoutSession = Tables<"workout_sessions">;
 
@@ -225,4 +227,290 @@ export async function fetchRecentSessions(
       durationMin,
     };
   });
+}
+
+export type MonthSessionEntry = {
+  dayOfMonth: number;
+  sessionIds: string[];
+  bodyPartColors: string[];
+};
+
+/**
+ * 특정 월의 세션 목록 — 캘린더 도트 + 리스트용.
+ * @param month 1-indexed (1=Jan, 12=Dec). JS Date는 0-indexed라 내부에서 변환.
+ * workout_sets!inner: 세트 0개 세션 제외 (Phase 3.6과 일관).
+ * is_primary === true 만 도트로 표시.
+ */
+export async function fetchSessionsInMonth(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<MonthSessionEntry[]> {
+  const supabase = await createClient();
+  const start = new Date(year, month - 1, 1).toISOString();
+  const end = new Date(year, month, 1).toISOString();
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(
+      `
+      id,
+      started_at,
+      workout_sets!inner (
+        exercises!inner (
+          exercise_body_parts (
+            is_primary,
+            body_parts ( color )
+          )
+        )
+      )
+    `,
+    )
+    .eq("user_id", userId)
+    .gte("started_at", start)
+    .lt("started_at", end);
+
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    started_at: string;
+    workout_sets: Array<{
+      exercises: {
+        exercise_body_parts: Array<{
+          is_primary: boolean | null;
+          body_parts: { color: string | null } | null;
+        }>;
+      };
+    }>;
+  };
+
+  const byDay = new Map<number, MonthSessionEntry>();
+  for (const row of (data ?? []) as unknown as Row[]) {
+    const day = new Date(row.started_at).getDate();
+    if (!byDay.has(day)) {
+      byDay.set(day, { dayOfMonth: day, sessionIds: [], bodyPartColors: [] });
+    }
+    const entry = byDay.get(day)!;
+    if (!entry.sessionIds.includes(row.id)) {
+      entry.sessionIds.push(row.id);
+    }
+    for (const ws of row.workout_sets) {
+      for (const ebp of ws.exercises.exercise_body_parts) {
+        if (ebp.is_primary === true && ebp.body_parts?.color) {
+          if (!entry.bodyPartColors.includes(ebp.body_parts.color)) {
+            entry.bodyPartColors.push(ebp.body_parts.color);
+          }
+        }
+      }
+    }
+  }
+  return Array.from(byDay.values()).sort(
+    (a, b) => a.dayOfMonth - b.dayOfMonth,
+  );
+}
+
+export type SessionDetail = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  bodyParts: Array<{ id: number; name_ko: string; color: string }>;
+  exercises: Array<{
+    id: string;
+    name: string;
+    sets: Array<{
+      set_number: number;
+      weight_kg: number | null;
+      reps: number | null;
+      parent_set_id: string | null;
+    }>;
+  }>;
+};
+
+export async function fetchSessionWithDetails(
+  sessionId: string,
+): Promise<SessionDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(
+      `
+      id,
+      started_at,
+      ended_at,
+      workout_sets (
+        set_number,
+        weight_kg,
+        reps,
+        parent_set_id,
+        exercise_id,
+        exercises (
+          id,
+          name,
+          exercise_body_parts (
+            body_parts ( id, name_ko, color )
+          )
+        )
+      )
+    `,
+    )
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return mapSessionDetailRow(data);
+}
+
+export type TopExercise = {
+  exerciseId: string;
+  exerciseName: string;
+  lastUsedAt: string;
+  recentSetCount: number;
+};
+
+/**
+ * 최근 12주 메인 세트 기준 자주 한 운동 N개 — ProgressLine 카드용.
+ */
+export async function fetchTopExercises(
+  userId: string,
+  limit: number = 8,
+): Promise<TopExercise[]> {
+  const supabase = await createClient();
+  const cutoff = new Date(Date.now() - 12 * 7 * 86_400_000).toISOString();
+
+  const { data, error } = await supabase
+    .from("workout_sets")
+    .select(
+      `
+      exercise_id,
+      created_at,
+      exercises!inner ( id, name ),
+      workout_sessions!inner ( user_id, started_at )
+    `,
+    )
+    .eq("workout_sessions.user_id", userId)
+    .is("parent_set_id", null)
+    .gte("workout_sessions.started_at", cutoff);
+
+  if (error) throw error;
+
+  type Row = {
+    exercise_id: string;
+    created_at: string | null;
+    exercises: { id: string; name: string };
+    workout_sessions: { user_id: string; started_at: string };
+  };
+
+  const map = new Map<
+    string,
+    { name: string; count: number; lastUsedAt: string }
+  >();
+  for (const r of (data ?? []) as unknown as Row[]) {
+    const cur = map.get(r.exercise_id);
+    const ts = r.workout_sessions.started_at;
+    if (!cur) {
+      map.set(r.exercise_id, {
+        name: r.exercises.name,
+        count: 1,
+        lastUsedAt: ts,
+      });
+    } else {
+      cur.count += 1;
+      if (ts > cur.lastUsedAt) cur.lastUsedAt = ts;
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([exerciseId, v]) => ({
+      exerciseId,
+      exerciseName: v.name,
+      lastUsedAt: v.lastUsedAt,
+      recentSetCount: v.count,
+    }))
+    .sort((a, b) => b.recentSetCount - a.recentSetCount)
+    .slice(0, limit);
+}
+
+export type ProgressionPoint = {
+  date: string; // ISO date string (그 날 첫 세션의 started_at)
+  oneRepMax: number;
+  volume: number;
+  maxWeight: number;
+};
+
+/**
+ * 운동별 N주 진척 — ExerciseProgressDialog 차트용.
+ * 세션 단위로 group: max 1RM, sum volume, max weight.
+ * SQL not-null 필터로 NaN 차단.
+ */
+export async function fetchExerciseProgression(
+  userId: string,
+  exerciseId: string,
+  weeksBack: number = 12,
+): Promise<ProgressionPoint[]> {
+  const supabase = await createClient();
+  const cutoff = new Date(
+    Date.now() - weeksBack * 7 * 86_400_000,
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from("workout_sets")
+    .select(
+      `
+      weight_kg,
+      reps,
+      workout_sessions!inner ( id, user_id, started_at )
+    `,
+    )
+    .eq("exercise_id", exerciseId)
+    .eq("workout_sessions.user_id", userId)
+    .is("parent_set_id", null)
+    .not("weight_kg", "is", null)
+    .not("reps", "is", null)
+    .gte("workout_sessions.started_at", cutoff);
+
+  if (error) throw error;
+
+  type Row = {
+    weight_kg: number | null;
+    reps: number | null;
+    workout_sessions: { id: string; user_id: string; started_at: string };
+  };
+
+  // 세션 단위 group
+  const bySession = new Map<
+    string,
+    { date: string; sets: Array<{ w: number; r: number }> }
+  >();
+  for (const r of (data ?? []) as unknown as Row[]) {
+    const sid = r.workout_sessions.id;
+    if (!bySession.has(sid)) {
+      bySession.set(sid, {
+        date: r.workout_sessions.started_at,
+        sets: [],
+      });
+    }
+    // not-null 필터로 이미 걸렀지만 TS narrowing
+    if (r.weight_kg != null && r.reps != null) {
+      bySession.get(sid)!.sets.push({ w: r.weight_kg, r: r.reps });
+    }
+  }
+
+  const points: ProgressionPoint[] = Array.from(bySession.values()).map(
+    (sess) => {
+      const oneRepMaxValues = sess.sets.map((s) => estimateOneRepMax(s.w, s.r));
+      const volumes = sess.sets.map((s) => calcSetVolume(s.w, s.r));
+      const weights = sess.sets.map((s) => s.w);
+      return {
+        date: sess.date,
+        oneRepMax: Math.max(0, ...oneRepMaxValues),
+        volume: volumes.reduce((sum, v) => sum + v, 0),
+        maxWeight: Math.max(0, ...weights),
+      };
+    },
+  );
+
+  return points.sort((a, b) => (a.date < b.date ? -1 : 1));
 }

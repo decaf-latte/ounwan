@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { ExerciseRecCard } from "./ExerciseRecCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +34,9 @@ export function StartForm({
   const [isPending, startTransition] = useTransition();
   const [saveOpen, setSaveOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
+  const [excludedExerciseIds, setExcludedExerciseIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const toggleBP = (id: number) => {
     setSelectedBP((prev) => {
@@ -42,7 +46,17 @@ export function StartForm({
       return next;
     });
     setShowRecommendations(false);
+    setExcludedExerciseIds(new Set()); // 부위 바뀌면 추천도 새로 — excluded 초기화
   };
+
+  const toggleInclude = useCallback((exId: string, included: boolean) => {
+    setExcludedExerciseIds((prev) => {
+      const next = new Set(prev);
+      if (included) next.delete(exId);
+      else next.add(exId);
+      return next;
+    });
+  }, []);
 
   const recommendations = useMemo(() => {
     if (selectedBP.size === 0) return [];
@@ -59,11 +73,19 @@ export function StartForm({
     [exercises],
   );
 
+  const recommendedExerciseIds = useMemo(
+    () =>
+      recommendations
+        .map((r) => r.exerciseId)
+        .filter((id) => !excludedExerciseIds.has(id)),
+    [recommendations, excludedExerciseIds],
+  );
+
   const handleStart = () => {
     startTransition(async () => {
       const result = await startSession({
         bodyPartIds: [...selectedBP],
-        recommendedExerciseIds: recommendations.map((r) => r.exerciseId),
+        recommendedExerciseIds,
         templateId: null,
       });
       if (result && result.ok === false) {
@@ -161,17 +183,12 @@ export function StartForm({
                 const ex = exerciseById.get(r.exerciseId);
                 if (!ex) return null;
                 return (
-                  <li
-                    key={r.exerciseId}
-                    className="rounded-md border border-accent-soft bg-surface p-3 text-body"
-                  >
-                    <div className="font-bold text-text">{ex.name}</div>
-                    <div className="text-caption text-text-muted mt-0.5">
-                      기본 {ex.default_sets ?? 3}세트
-                      {ex.default_reps_min && ex.default_reps_max
-                        ? ` · ${ex.default_reps_min}~${ex.default_reps_max}회`
-                        : ""}
-                    </div>
+                  <li key={r.exerciseId}>
+                    <ExerciseRecCard
+                      exercise={ex}
+                      included={!excludedExerciseIds.has(r.exerciseId)}
+                      onToggle={toggleInclude}
+                    />
                   </li>
                 );
               })}
@@ -188,11 +205,13 @@ export function StartForm({
             isPending ||
             selectedBP.size === 0 ||
             !showRecommendations ||
-            recommendations.length === 0
+            recommendedExerciseIds.length === 0
           }
           onClick={handleStart}
         >
-          {isPending ? "시작 중..." : "운동 시작"}
+          {isPending
+            ? "시작 중..."
+            : `운동 시작 (${recommendedExerciseIds.length})`}
         </Button>
 
         <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
