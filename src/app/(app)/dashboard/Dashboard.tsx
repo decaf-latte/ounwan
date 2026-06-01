@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ui/progress-ring";
@@ -40,7 +40,7 @@ export function Dashboard({
     : "아직 운동 전이에요";
 
   return (
-    <main className="p-5 max-w-md mx-auto pb-32">
+    <main className="p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5">
       <div className="flex items-start justify-between">
         <div>
           <div className="text-label text-accent-strong uppercase">
@@ -51,7 +51,7 @@ export function Dashboard({
           </h1>
           <p className="text-body text-text-muted mt-1">{subline}</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 lg:hidden">
           <ThemeToggle />
           <form action={signOut}>
             <Button
@@ -66,73 +66,70 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* 진행 카드 */}
-      <Card className="mt-5 p-4 flex items-center gap-4">
-        <ProgressRing
-          value={todaySession?.exerciseCount ?? 0}
-          max={DEFAULT_EXERCISE_GOAL}
-        />
-        <div>
-          <div className="text-stat-l font-extrabold leading-none">
-            {todaySession?.exerciseCount ?? 0}
-            <span className="text-body font-medium text-text-muted">
-              {" "}
-              / {DEFAULT_EXERCISE_GOAL}
-            </span>
+      <section className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* 진행 카드 */}
+        <Card className="p-4 flex items-center gap-4">
+          <ProgressRing
+            value={todaySession?.exerciseCount ?? 0}
+            max={DEFAULT_EXERCISE_GOAL}
+          />
+          <div>
+            <div className="text-stat-l font-extrabold leading-none">
+              {todaySession?.exerciseCount ?? 0}
+              <span className="text-body font-medium text-text-muted">
+                {" "}
+                / {DEFAULT_EXERCISE_GOAL}
+              </span>
+            </div>
+            <div className="text-caption text-text-muted mt-1">
+              운동 · {todaySession?.mainSetCount ?? 0}세트 완료
+            </div>
           </div>
-          <div className="text-caption text-text-muted mt-1">
-            운동 · {todaySession?.mainSetCount ?? 0}세트 완료
-          </div>
-        </div>
-      </Card>
+        </Card>
 
-      {/* 이번 주 */}
-      <section className="mt-5">
-        <div className="flex justify-between items-center">
+        {/* 이번 주 */}
+        <Card className="p-4">
           <div className="text-h3 font-extrabold">이번 주</div>
-        </div>
-        <div className="flex gap-1.5 mt-2.5">
-          {DAY_LABELS.map((label, i) => {
-            const state: "done" | "missed" | "today" = weeklyDates.includes(i)
-              ? "done"
-              : i === todayDayIndex
-                ? "today"
-                : "missed";
-            return <DayChip key={label} day={label} state={state} />;
-          })}
-        </div>
+          <div className="flex gap-1.5 mt-2.5">
+            {DAY_LABELS.map((label, i) => {
+              const state: "done" | "missed" | "today" = weeklyDates.includes(i)
+                ? "done"
+                : i === todayDayIndex
+                  ? "today"
+                  : "missed";
+              return <DayChip key={label} day={label} state={state} />;
+            })}
+          </div>
+        </Card>
+
+        {/* 최근 운동 */}
+        {recentExercises.length > 0 && (
+          <Card className="p-3.5 lg:col-span-2">
+            <div className="text-caption text-text-muted font-semibold">
+              최근 운동
+            </div>
+            {recentExercises.map((ex) => (
+              <div
+                key={ex.exerciseId}
+                className="flex justify-between items-center mt-2"
+              >
+                <div className="text-body font-bold">{ex.exerciseName}</div>
+                <div className="text-caption text-text font-semibold">
+                  {ex.lastWeightKg ?? "-"}kg × {ex.lastReps ?? "-"}
+                </div>
+              </div>
+            ))}
+          </Card>
+        )}
       </section>
 
-      {/* 최근 운동 */}
-      {recentExercises.length > 0 && (
-        <Card className="mt-4 p-3.5">
-          <div className="text-caption text-text-muted font-semibold">
-            최근 운동
-          </div>
-          {recentExercises.map((ex) => (
-            <div
-              key={ex.exerciseId}
-              className="flex justify-between items-center mt-2"
-            >
-              <div className="text-body font-bold">{ex.exerciseName}</div>
-              <div className="text-caption text-text font-semibold">
-                {ex.lastWeightKg ?? "-"}kg × {ex.lastReps ?? "-"}
-              </div>
-            </div>
-          ))}
-        </Card>
-      )}
-
       {/* CTA */}
-      <div className="fixed bottom-5 left-5 right-5 max-w-md mx-auto flex gap-2">
-        <Link href="/workout/new" className="flex-1">
+      <div className="fixed bottom-5 left-5 right-5 max-w-md mx-auto lg:static lg:mt-6 lg:max-w-xs lg:mx-0">
+        <Link href="/workout/new" className="block">
           <Button size="lg" className="w-full">
             + 운동 시작
           </Button>
         </Link>
-        <Button size="lg" variant="outline" aria-label="기록 보기">
-          <BarChart3 className="w-5 h-5" />
-        </Button>
       </div>
     </main>
   );
