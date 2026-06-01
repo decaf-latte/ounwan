@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { recommendExercises } from "@/lib/workout/recommendation";
-import { startSession, saveTemplate } from "@/app/workout/actions";
+import { startSession, saveTemplate } from "@/app/(app)/workout/actions";
 import { BodyPartChip } from "@/components/ui/body-part-chip";
 import type { StartFormProps } from "./start-form-types";
 
