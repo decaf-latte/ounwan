@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database.types";
 import { estimateOneRepMax, calcSetVolume } from "@/lib/workout/one-rep-max";
+import { mapSessionDetailRow } from "./session-detail-mapper";
 
 export type WorkoutSession = Tables<"workout_sessions">;
 
@@ -359,71 +360,7 @@ export async function fetchSessionWithDetails(
   if (error) throw error;
   if (!data) return null;
 
-  type Row = {
-    id: string;
-    started_at: string;
-    ended_at: string | null;
-    workout_sets: Array<{
-      set_number: number;
-      weight_kg: number | null;
-      reps: number | null;
-      parent_set_id: string | null;
-      exercise_id: string;
-      exercises: {
-        id: string;
-        name: string;
-        exercise_body_parts: Array<{
-          body_parts: { id: number; name_ko: string; color: string } | null;
-        }>;
-      };
-    }>;
-  };
-
-  const row = data as unknown as Row;
-
-  // 메인 세트만 (parent_set_id IS NULL)
-  const mainSets = row.workout_sets.filter((s) => s.parent_set_id === null);
-
-  // 운동별 group
-  const exerciseMap = new Map<
-    string,
-    { id: string; name: string; sets: SessionDetail["exercises"][number]["sets"] }
-  >();
-  const bodyPartMap = new Map<
-    number,
-    { id: number; name_ko: string; color: string }
-  >();
-
-  for (const s of mainSets) {
-    const ex = s.exercises;
-    if (!exerciseMap.has(ex.id)) {
-      exerciseMap.set(ex.id, { id: ex.id, name: ex.name, sets: [] });
-    }
-    exerciseMap.get(ex.id)!.sets.push({
-      set_number: s.set_number,
-      weight_kg: s.weight_kg,
-      reps: s.reps,
-      parent_set_id: s.parent_set_id,
-    });
-    for (const ebp of ex.exercise_body_parts) {
-      if (ebp.body_parts && !bodyPartMap.has(ebp.body_parts.id)) {
-        bodyPartMap.set(ebp.body_parts.id, ebp.body_parts);
-      }
-    }
-  }
-
-  // 세트 정렬
-  for (const ex of exerciseMap.values()) {
-    ex.sets.sort((a, b) => a.set_number - b.set_number);
-  }
-
-  return {
-    id: row.id,
-    started_at: row.started_at,
-    ended_at: row.ended_at,
-    bodyParts: Array.from(bodyPartMap.values()),
-    exercises: Array.from(exerciseMap.values()),
-  };
+  return mapSessionDetailRow(data);
 }
 
 export type TopExercise = {
