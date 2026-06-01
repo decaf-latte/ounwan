@@ -88,8 +88,8 @@ src/
     └─ workout/
         └─ one-rep-max.ts                    [NEW] Epley 공식 + 볼륨 계산 (순수 함수)
 
-src/app/globals.css                          [MOD] --bp-* 부위 색 토큰 추가
 package.json                                 [MOD] recharts dependency
+                                                   (globals.css 변경 없음 — body_parts.color DB 직접 사용)
 ```
 
 ### 4.2 신규 컴포넌트
@@ -986,4 +986,5 @@ export async function fetchExerciseProgressionClient(exerciseId: string, weeksBa
 | Version | Date | Change |
 |---|---|---|
 | v1 | 2026-06-01 | Initial draft after brainstorming session (사용자 선택: 라우트 C 하이브리드 / 차트 A+D / R4 체크박스 / 세션 상세 모달 / 미니 캘린더는 주간 칩 대체 / 1RM Epley / recharts 도입) |
+| v3 | 2026-06-01 | critic round 2 nit fix: 파일 맵의 `globals.css [MOD] --bp-* 토큰 추가` 잔재 제거 — Section 4.4의 "토큰 안 만듦" 결정과 일치시킴. |
 | v2 | 2026-06-01 | critic round 1 fixes: (CRITICAL) body_parts ID hardcoded 매핑이 DB seed와 5/8 부위 불일치 → CSS 토큰 시스템 폐기, **`body_parts.color` DB 컬럼 직접 사용으로 단일 진실 소스화**. RSC 쿼리들이 join으로 color fetch, 컴포넌트는 `style={{ backgroundColor }}` 직접. (CRITICAL→MAJOR) weight_kg/reps NULL 가드 — `estimateOneRepMax`/`calcSetVolume`에 null check + `fetchExerciseProgression`에 SQL `.not(...)` 이중 차단. (MAJOR) `formatDateKo`/`BodyPartTag` 인라인 정의, ExerciseProgressDialog 누락 imports(Skeleton, fetchExerciseProgressionClient) 추가. (MAJOR) Checkbox base-ui API 명시 — `(checked: boolean) => void`. (MAJOR) `finishSession`에 `revalidatePath('/history')` 추가를 Chunk 7 sub-task로 명시. (MISSING) MiniCalendar Props에 `sessionIds` 통합 → `DayEntry { bodyPartColors, sessionIds }`. 같은 날 여러 세션 → 첫 sessionId만 모달, aria-label에 카운트 노출. (MISSING) URL `m` 1-indexed로 변경(사용자 친화), safeYear/safeMonth 범위 검증. (MISSING) `<button>` 자식 `<div>` → `<span>` (HTML5 phrasing). (MISSING) MiniCalendar 6주 고정, role="grid"/gridcell + aria-label. 화살표 키 네비는 Plan 4.1로 연기. (MISSING) HistoryView 리스트 탭도 선택한 월 데이터로 통일 (탭 간 시간 범위 일관성). useTransition + router.push({ scroll: false }) 월 이동. (MISSING) recharts SSR — 부모 명시 높이 + ResponsiveContainer width/height 100%. Chunk 1에서 globals.css 토큰 작업 제거, Chunk 7에 finishSession 갱신 추가. |
