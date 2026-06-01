@@ -24,6 +24,7 @@ import {
   finishSession,
   removeExerciseFromSession,
 } from "@/app/(app)/workout/actions";
+import { ExerciseList } from "@/components/workout/ExerciseList";
 import type { WorkoutSession } from "@/lib/queries/sessions";
 import type { ExerciseWithBodyParts } from "@/lib/queries/exercises";
 import type {
@@ -191,7 +192,9 @@ export function SessionRunner({
         s.parent_set_id === null,
     );
 
-  const activeExerciseId = useMemo(() => {
+  const [userPickedExId, setUserPickedExId] = useState<string | null>(null);
+
+  const computedActiveId = useMemo(() => {
     for (const ex of exercises) {
       const targetSets = ex.default_sets ?? 3;
       const savedMainSets = savedSets.filter(
@@ -200,6 +203,34 @@ export function SessionRunner({
       if (savedMainSets < targetSets) return ex.id;
     }
     return null;
+  }, [exercises, savedSets]);
+
+  // 사용자가 고른 운동이 완료(또는 삭제)되면 무시 → computedActiveId가 다음 운동을 가리킴.
+  // setState-in-effect 대신 순수 파생으로 처리 (stale pick 자동 해소).
+  const effectivePickedId = useMemo(() => {
+    if (!userPickedExId) return null;
+    const target = exercises.find((e) => e.id === userPickedExId);
+    if (!target) return null;
+    const targetSets = target.default_sets ?? 3;
+    const saved = savedSets.filter(
+      (s) => s.exercise_id === userPickedExId && s.parent_set_id === null,
+    ).length;
+    if (saved >= targetSets) return null;
+    return userPickedExId;
+  }, [userPickedExId, exercises, savedSets]);
+
+  const activeExerciseId = effectivePickedId ?? computedActiveId;
+  const allDone = activeExerciseId === null;
+
+  const completionByEx = useMemo(() => {
+    const out: Record<string, { saved: number; target: number }> = {};
+    for (const ex of exercises) {
+      const saved = savedSets.filter(
+        (s) => s.exercise_id === ex.id && s.parent_set_id === null,
+      ).length;
+      out[ex.id] = { saved, target: ex.default_sets ?? 3 };
+    }
+    return out;
   }, [exercises, savedSets]);
 
   const saveSet = useMutation<WorkoutSet, Error, SaveSetVars, SaveSetCtx>({
@@ -311,111 +342,133 @@ export function SessionRunner({
     });
   };
 
-  return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-h2 font-extrabold text-text">운동 진행 중</h1>
-        <p className="text-caption text-text-muted">
-          {new Date(session.started_at).toLocaleString("ko-KR")}
-        </p>
-      </header>
-
-      {exercises.map((ex) => {
-        const prefill = prefillDefaults[ex.id];
-        return (
-          <ExerciseCardWrapper
-            key={ex.id}
-            exerciseId={ex.id}
-            isActive={ex.id === activeExerciseId}
-            isAnyActive={activeExerciseId !== null}
-            isRemoving={isRemoving}
-            onRemove={handleRemoveClick}
-          >
-            <div className="pr-8">
-              <div className="text-h3 font-extrabold text-text">{ex.name}</div>
-              {prefill && (prefill.weightKg != null || prefill.reps != null) && (
-                <div className="text-caption text-text-muted mt-0.5">
-                  지난번 {prefill.weightKg ?? "-"}kg × {prefill.reps ?? "-"}
-                </div>
-              )}
-            </div>
-            <div className="mt-1">
-              {drafts[ex.id].map((draft, idx) => {
-                const saved = isSaved(ex.id, draft.setNumber);
-                const isActive = ex.id === activeExerciseId && !saved;
-                const status = saved
-                  ? "done"
-                  : isActive
-                    ? "active"
-                    : "upcoming";
-                const isPending = pendingKeys.has(
-                  setKey(ex.id, draft.setNumber),
-                );
-
-                return (
-                  <SetRow
-                    key={idx}
-                    setNumber={draft.setNumber}
-                    status={status}
-                    weight={draft.weightKg}
-                    reps={draft.reps}
-                    onWeightChange={(v) =>
-                      setDrafts((prev) => {
-                        const copy = { ...prev };
-                        copy[ex.id] = [...copy[ex.id]];
-                        copy[ex.id][idx] = { ...draft, weightKg: v };
-                        return copy;
-                      })
-                    }
-                    onRepsChange={(v) =>
-                      setDrafts((prev) => {
-                        const copy = { ...prev };
-                        copy[ex.id] = [...copy[ex.id]];
-                        copy[ex.id][idx] = { ...draft, reps: v };
-                        return copy;
-                      })
-                    }
-                    checkDisabled={isPending || !draft.weightKg || !draft.reps}
-                    onCheck={() => {
-                      const w = parseFloat(draft.weightKg);
-                      const r = parseInt(draft.reps, 10);
-                      if (
-                        !Number.isFinite(w) ||
-                        !Number.isFinite(r) ||
-                        w < 0 ||
-                        r <= 0
-                      ) {
-                        toast.error(
-                          "무게(0 이상)와 회수(1 이상)를 올바르게 입력하세요",
-                        );
-                        return;
-                      }
-                      saveSet.mutate({
-                        exerciseId: ex.id,
-                        setNumber: draft.setNumber,
-                        weightKg: w,
-                        reps: r,
-                      });
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </ExerciseCardWrapper>
-        );
-      })}
-
-      <Separator />
-
-      <Button
-        className="w-full"
-        size="lg"
-        variant="default"
-        disabled={isFinishing || savedSets.length === 0}
-        onClick={handleFinish}
+  const cardFor = (ex: ExerciseWithBodyParts) => {
+    const prefill = prefillDefaults[ex.id];
+    return (
+      <ExerciseCardWrapper
+        key={ex.id}
+        exerciseId={ex.id}
+        isActive={ex.id === activeExerciseId}
+        isAnyActive={activeExerciseId !== null}
+        isRemoving={isRemoving}
+        onRemove={handleRemoveClick}
       >
-        {isFinishing ? "종료 중..." : "운동 종료"}
-      </Button>
+        <div className="pr-8">
+          <div className="text-h3 font-extrabold text-text">{ex.name}</div>
+          {prefill && (prefill.weightKg != null || prefill.reps != null) && (
+            <div className="text-caption text-text-muted mt-0.5">
+              지난번 {prefill.weightKg ?? "-"}kg × {prefill.reps ?? "-"}
+            </div>
+          )}
+        </div>
+        <div className="mt-1">
+          {drafts[ex.id].map((draft, idx) => {
+            const saved = isSaved(ex.id, draft.setNumber);
+            const isActive = ex.id === activeExerciseId && !saved;
+            const status = saved ? "done" : isActive ? "active" : "upcoming";
+            const isPending = pendingKeys.has(setKey(ex.id, draft.setNumber));
+
+            return (
+              <SetRow
+                key={idx}
+                setNumber={draft.setNumber}
+                status={status}
+                weight={draft.weightKg}
+                reps={draft.reps}
+                onWeightChange={(v) =>
+                  setDrafts((prev) => {
+                    const copy = { ...prev };
+                    copy[ex.id] = [...copy[ex.id]];
+                    copy[ex.id][idx] = { ...draft, weightKg: v };
+                    return copy;
+                  })
+                }
+                onRepsChange={(v) =>
+                  setDrafts((prev) => {
+                    const copy = { ...prev };
+                    copy[ex.id] = [...copy[ex.id]];
+                    copy[ex.id][idx] = { ...draft, reps: v };
+                    return copy;
+                  })
+                }
+                checkDisabled={isPending || !draft.weightKg || !draft.reps}
+                onCheck={() => {
+                  const w = parseFloat(draft.weightKg);
+                  const r = parseInt(draft.reps, 10);
+                  if (
+                    !Number.isFinite(w) ||
+                    !Number.isFinite(r) ||
+                    w < 0 ||
+                    r <= 0
+                  ) {
+                    toast.error(
+                      "무게(0 이상)와 회수(1 이상)를 올바르게 입력하세요",
+                    );
+                    return;
+                  }
+                  saveSet.mutate({
+                    exerciseId: ex.id,
+                    setNumber: draft.setNumber,
+                    weightKg: w,
+                    reps: r,
+                  });
+                }}
+              />
+            );
+          })}
+        </div>
+      </ExerciseCardWrapper>
+    );
+  };
+
+  return (
+    <div className="lg:flex lg:gap-6">
+      <ExerciseList
+        exercises={exercises}
+        activeExerciseId={activeExerciseId}
+        completionByEx={completionByEx}
+        onSelectExercise={setUserPickedExId}
+      />
+
+      <div className="flex-1 space-y-4 min-w-0">
+        <header>
+          <h1 className="text-h2 font-extrabold text-text">운동 진행 중</h1>
+          <p className="text-caption text-text-muted">
+            {new Date(session.started_at).toLocaleString("ko-KR")}
+          </p>
+        </header>
+
+        {/* 모바일: 모든 운동 카드 펼침 */}
+        <div className="space-y-4 lg:hidden">{exercises.map(cardFor)}</div>
+
+        {/* lg+: active 운동 카드 1개 또는 모든 운동 완료 메시지 */}
+        <div className="hidden lg:block">
+          {allDone ? (
+            <div className="text-center py-12 space-y-2">
+              <p className="text-h2 font-extrabold text-accent">
+                모든 운동 완료 🎉
+              </p>
+              <p className="text-body text-text-muted">
+                아래 버튼으로 세션을 끝낼 수 있어요.
+              </p>
+            </div>
+          ) : (
+            exercises.filter((ex) => ex.id === activeExerciseId).map(cardFor)
+          )}
+        </div>
+
+        <Separator />
+
+        <Button
+          className="w-full lg:max-w-xs"
+          size="lg"
+          variant="default"
+          disabled={isFinishing || savedSets.length === 0}
+          onClick={handleFinish}
+        >
+          {isFinishing ? "종료 중..." : "운동 종료"}
+        </Button>
+      </div>
 
       <Dialog
         open={removeTarget !== null}

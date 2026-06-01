@@ -55,7 +55,7 @@ export default async function SessionPage({
   );
 
   return (
-    <main className="p-5 max-w-md mx-auto pb-32">
+    <main className="p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5">
       <SessionRunner
         session={session}
         exercises={selectedExercises}
