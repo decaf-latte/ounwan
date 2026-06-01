@@ -52,7 +52,7 @@ Phase 3.6의 `/history` 카드 리스트(최근 4주) 위에 **월별 캘린더 
 | 미니 캘린더 위치 | **주간 칩 대체** | 7일 → 이번 달 전체 그리드. 동점 파악 ↑, 정보 중복 X. |
 | 1RM 공식 | **Epley**: `weight × (1 + reps/30)` | 가장 보편적. 회수가 다른 세트도 비교 가능. |
 | 차트 라이브러리 | **recharts** | 18kB gzip, React 19 호환, 가장 안정적 |
-| 부위 색 | 8개 부위마다 CSS var 토큰 | globals.css에 `--bp-*` 추가, 라이트/다크 동시 정의 |
+| 부위 색 | **`body_parts.color` DB 컬럼 직접 사용** (단일 진실 소스) | 이미 seed에 8개 부위 hex 색 있음 (chest #FF6B6B / back #4ECDC4 / shoulder #FFE66D / trap #95E1D3 / arm #C9B1FF / leg #F38181 / glute #FCBAD3 / core #A8E6CF). RSC가 join으로 color 같이 fetch → props로 전달. 다크모드 채도 조정은 CSS `filter: saturate(0.85) brightness(0.9)` 동적 적용. 새 CSS 토큰 안 만듦 → divergent risk 차단. |
 
 ---
 
@@ -96,32 +96,108 @@ package.json                                 [MOD] recharts dependency
 
 #### `src/components/ui/mini-calendar.tsx`
 
-월별 그리드. 일주일 = 7열, 5주 ≤ N ≤ 6주. 각 날짜 셀에 부위 도트 0~4개.
+월별 그리드. **고정 6주 × 7일 = 42 셀** (변동 높이 layout shift 방지). 각 날짜 셀에 부위 도트 + 같은 날 여러 세션 가능.
 
 ```tsx
 "use client";
 import { cn } from "@/lib/utils";
+import { bodyPartStyle } from "@/lib/workout/body-part-color";
+
+export type DayEntry = {
+  /** 그 날 운동한 부위별 색 (DB hex). 도트 색 매핑용. 중복 제거됨. */
+  bodyPartColors: string[];
+  /** 그 날 세션 UUID 리스트. 같은 날 여러 세션 가능. */
+  sessionIds: string[];
+};
 
 type Props = {
   year: number;            // 2026
-  month: number;           // 0-indexed (0=Jan, 5=Jun)
+  /** 1-indexed (1=Jan, 12=Dec) — URL 표기와 일치 */
+  month: number;
   todayDayOfMonth?: number;
-  /** dayOfMonth → bodyPartIds (color dot 매핑) */
-  dotsByDate: Record<number, number[]>;
-  /** 날짜 클릭 콜백. 미지정 시 셀 비활성 (대시보드용) */
-  onDateClick?: (dayOfMonth: number) => void;
+  /** dayOfMonth → DayEntry */
+  dotsByDate: Record<number, DayEntry>;
+  /** 날짜 클릭 콜백. 미지정 시 셀 비활성 (대시보드용). 같은 날 여러 세션이면 첫 sessionId 전달. */
+  onDateClick?: (sessionId: string) => void;
   size?: "sm" | "md";       // sm = 대시보드, md = /history
 };
 
 export function MiniCalendar({ year, month, todayDayOfMonth, dotsByDate, onDateClick, size = "md" }: Props) {
-  // 1) 월의 첫 날 요일 (0=일 ... 6=토) → 한국식 (월=0)으로 변환
-  // 2) 마지막 일 계산
-  // 3) 5~6주 그리드 렌더
-  // 4) 셀: 비활성(empty) / 평일 / 오늘(border-accent) / 도트
+  // 1) 월의 첫 날 요일 → 월요일 시작 보정 (Mon=0 ... Sun=6)
+  //    JS getDay(): Sun=0, Mon=1, ..., Sat=6 → ((getDay() + 6) % 7) = Mon=0...Sun=6
+  // 2) 마지막 일 = new Date(year, month, 0).getDate()  (month=1~12, JS Date의 0번째 일은 전월 마지막)
+  // 3) 6주 고정 (42 셀). 앞뒤로 비는 셀은 empty.
+  // 4) 셀 종류:
+  //    - empty: 회색 텍스트 또는 빈 공간
+  //    - 일반: 숫자만
+  //    - 오늘: border-2 border-accent
+  //    - 운동한 날: 숫자 + 하단에 부위 색 도트 N개 (max 4, 5개부터는 +N)
+  //    - onDateClick 있고 운동한 날이면 클릭 가능 (button)
+
+  return (
+    <div
+      role="grid"
+      aria-label={`${year}년 ${month}월 운동 캘린더`}
+      className={cn("grid grid-cols-7 gap-1", size === "sm" ? "text-[10px]" : "text-xs")}
+    >
+      {/* 요일 헤더 */}
+      {["월","화","수","목","금","토","일"].map((d) => (
+        <div key={d} role="columnheader" className="text-center text-text-muted py-1">{d}</div>
+      ))}
+
+      {/* 42 셀 */}
+      {Array.from({ length: 42 }).map((_, i) => {
+        const dayNum = i - firstDayMonOffset + 1;
+        const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
+        const entry = inMonth ? dotsByDate[dayNum] : undefined;
+        const isToday = inMonth && dayNum === todayDayOfMonth;
+        const clickable = !!entry && !!onDateClick;
+        const cellContent = (
+          <>
+            <span>{inMonth ? dayNum : ""}</span>
+            {entry && (
+              <div className="flex justify-center gap-0.5 mt-0.5">
+                {entry.bodyPartColors.slice(0, 4).map((c, j) => (
+                  <span key={j} className="w-1 h-1 rounded-full inline-block" style={bodyPartStyle(c)} />
+                ))}
+                {entry.bodyPartColors.length > 4 && <span className="text-[8px]">+{entry.bodyPartColors.length - 4}</span>}
+              </div>
+            )}
+          </>
+        );
+        if (clickable) {
+          return (
+            <button
+              key={i}
+              type="button"
+              role="gridcell"
+              onClick={() => onDateClick(entry.sessionIds[0])}  /* 같은 날 여러면 첫 세션 */
+              className={cn("text-center rounded p-1 hover:bg-accent-soft", isToday && "border-2 border-accent")}
+              aria-label={`${month}월 ${dayNum}일, 세션 ${entry.sessionIds.length}개`}
+            >
+              {cellContent}
+            </button>
+          );
+        }
+        return (
+          <div
+            key={i}
+            role="gridcell"
+            className={cn("text-center rounded p-1", isToday && "border-2 border-accent", !inMonth && "text-text-ghost")}
+          >
+            {cellContent}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 ```
 
-> **요일 시작:** 한국 사용자 — 월요일 시작. `getDay()` 결과 보정 헬퍼 분리.
+> **요일 시작:** 한국 사용자 — 월요일 시작.
+> **같은 날 여러 세션:** 첫 세션만 모달로 표시 (Plan 4 스코프). 여러 세션 picker UI는 Plan 4.1+ 후보.
+> **고정 6주:** 변동 높이 layout shift 방지. 빈 셀은 회색 텍스트.
+> **접근성:** `role="grid"` + `aria-label`. 각 셀 `role="gridcell"`. 클릭 가능 셀은 `<button>`. 화살표 키 네비는 Plan 4.1로 연기.
 
 #### `src/components/charts/ProgressLine.tsx`
 
@@ -147,17 +223,17 @@ export function ProgressLine({ exerciseId, exerciseName, data, onClick }: Props)
   const delta = latest - earliest;
 
   return (
-    <button type="button" onClick={() => onClick?.(exerciseId)} className="...">
-      <div className="text-h3 font-bold">{exerciseName}</div>
-      <div className="text-caption text-text-muted">1RM 추이 (8주)</div>
-      <div className="h-16 mt-2">
-        <ResponsiveContainer>
+    <button type="button" onClick={() => onClick?.(exerciseId)} className="w-full text-left p-3 rounded-lg border border-border bg-surface hover:bg-accent-soft transition-colors">
+      <span className="block text-h3 font-bold text-text">{exerciseName}</span>
+      <span className="block text-caption text-text-muted">1RM 추이 (8주)</span>
+      <span className="block h-16 mt-2">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <Line dataKey="oneRepMax" stroke="var(--color-accent)" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
-      </div>
-      <div className="text-caption mt-1">{latest}kg · {delta >= 0 ? "+" : ""}{delta}kg</div>
+      </span>
+      <span className="block text-caption mt-1">{latest}kg · {delta >= 0 ? "+" : ""}{delta}kg</span>
     </button>
   );
 }
@@ -210,11 +286,29 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchSessionWithDetailsClient } from "@/lib/queries/sessions-client";
+import { bodyPartStyle } from "@/lib/workout/body-part-color";
 
 type Props = {
   sessionId: string | null;        // null이면 닫힘
   onClose: () => void;
 };
+
+/** 한국어 날짜 포맷 헬퍼 (인라인) */
+function formatDateKo(iso: string): string {
+  return new Date(iso).toLocaleString("ko-KR", { dateStyle: "long", timeStyle: "short" });
+}
+
+/** 부위 태그 — body_parts.color 직접 사용 (CSS 토큰 없음) */
+function BodyPartTag({ name, color }: { name: string; color: string }) {
+  return (
+    <span
+      className="px-2 py-0.5 rounded text-caption font-medium text-text dark:saturate-90 dark:brightness-95"
+      style={bodyPartStyle(color)}
+    >
+      {name}
+    </span>
+  );
+}
 
 export function SessionDetailDialog({ sessionId, onClose }: Props) {
   const { data, isLoading, error } = useQuery({
@@ -226,29 +320,43 @@ export function SessionDetailDialog({ sessionId, onClose }: Props) {
   return (
     <Dialog open={!!sessionId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md lg:max-w-2xl">
-        <DialogHeader><DialogTitle>{data ? formatDateKo(data.started_at) : "세션 상세"}</DialogTitle></DialogHeader>
-        {isLoading ? <Skeleton className="h-40" /> : error ? <p>불러올 수 없어요</p> : data && (
+        <DialogHeader>
+          <DialogTitle>{data ? formatDateKo(data.started_at) : "세션 상세"}</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <Skeleton className="h-40" />
+        ) : error ? (
+          <p className="text-body text-text-muted">불러올 수 없어요. 다시 시도해 주세요.</p>
+        ) : data ? (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-1">
-              {data.bodyParts.map((bp) => <BodyPartTag key={bp.id} bodyPartId={bp.id} name={bp.name_ko} />)}
+              {data.bodyParts.map((bp) => (
+                <BodyPartTag key={bp.id} name={bp.name_ko} color={bp.color} />
+              ))}
             </div>
             {data.exercises.map((ex) => (
-              <article key={ex.id} className="rounded-lg border p-3">
-                <h3 className="text-h3 font-bold">{ex.name}</h3>
-                <div className="text-caption mt-1">
-                  {ex.sets.map((s, i) => <span key={i}>{s.weight_kg}kg × {s.reps}회{i < ex.sets.length - 1 ? " · " : ""}</span>)}
+              <article key={ex.id} className="rounded-lg border border-border p-3">
+                <h3 className="text-h3 font-bold text-text">{ex.name}</h3>
+                <div className="text-caption text-text-muted mt-1">
+                  {ex.sets.map((s, i) => (
+                    <span key={i}>
+                      {s.weight_kg ?? "-"}kg × {s.reps ?? "-"}회
+                      {i < ex.sets.length - 1 ? " · " : ""}
+                    </span>
+                  ))}
                 </div>
               </article>
             ))}
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
 }
 ```
 
-> `fetchSessionWithDetailsClient`는 클라이언트용 wrapper (Browser supabase client). 동일 쿼리이지만 클라이언트에서 호출.
+> `fetchSessionWithDetailsClient`는 클라이언트용 wrapper (Browser supabase client). 동일 쿼리이지만 클라이언트에서 호출. SessionDetail 타입의 `bodyParts: Array<{ id; name_ko; color }>`로 color 포함 — 5.2 query에서 join.
+> `weight_kg`/`reps`는 nullable이라 `??` 가드.
 
 #### `src/components/workout/ExerciseProgressDialog.tsx`
 
@@ -258,7 +366,9 @@ export function SessionDetailDialog({ sessionId, onClose }: Props) {
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MultiSeriesChart } from "@/components/charts/MultiSeriesChart";
+import { fetchExerciseProgressionClient } from "@/lib/queries/sessions-client";
 
 type Props = {
   exerciseId: string | null;
@@ -267,7 +377,7 @@ type Props = {
 };
 
 export function ExerciseProgressDialog({ exerciseId, exerciseName, onClose }: Props) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["exercise-progression", exerciseId],
     queryFn: () => fetchExerciseProgressionClient(exerciseId!, 12),
     enabled: !!exerciseId,
@@ -276,8 +386,18 @@ export function ExerciseProgressDialog({ exerciseId, exerciseName, onClose }: Pr
   return (
     <Dialog open={!!exerciseId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md lg:max-w-3xl">
-        <DialogHeader><DialogTitle>{exerciseName}</DialogTitle></DialogHeader>
-        {isLoading ? <Skeleton className="h-64" /> : data && data.length >= 2 ? <MultiSeriesChart data={data} /> : <p>아직 기록이 부족해요</p>}
+        <DialogHeader>
+          <DialogTitle>{exerciseName}</DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <Skeleton className="h-64" />
+        ) : error ? (
+          <p className="text-body text-text-muted">차트를 불러올 수 없어요.</p>
+        ) : data && data.length >= 2 ? (
+          <MultiSeriesChart data={data} />
+        ) : (
+          <p className="text-body text-text-muted">아직 기록이 부족해요. 2회 이상 기록 후 다시 봐주세요.</p>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -307,8 +427,8 @@ export function ExerciseRecCard({ exercise, included, onToggle }: Props) {
       <Checkbox
         id={`rec-${exercise.id}`}
         checked={included}
-        onCheckedChange={(v) => onToggle(exercise.id, v === true)}
-        aria-label={`${exercise.name} ${included ? "제외" : "포함"}`}
+        onCheckedChange={(checked) => onToggle(exercise.id, checked)}
+        aria-label={`${exercise.name} ${included ? "제외하기" : "다시 포함하기"}`}
       />
       <label htmlFor={`rec-${exercise.id}`} className="flex-1 cursor-pointer">
         <div className="text-body font-semibold text-text">{exercise.name}</div>
@@ -324,14 +444,14 @@ export function ExerciseRecCard({ exercise, included, onToggle }: Props) {
 }
 ```
 
-> shadcn `Checkbox` 컴포넌트는 Phase 0+1에서 이미 추가됨 (`src/components/ui/checkbox.tsx`).
+> **Checkbox는 base-ui (`@base-ui/react/checkbox`)** — NOT Radix. `onCheckedChange` 시그니처는 `(checked: boolean, eventDetails) => void`. `checked`는 항상 boolean (Radix의 `'indeterminate'` 문자열 분기 없음). `src/components/ui/checkbox.tsx`에 이미 wrapper 정의됨 (Phase 0+1).
 
 ### 4.3 기존 컴포넌트 수정
 
 #### `Dashboard.tsx`
 
 - **주간 칩 영역 → MiniCalendar로 교체**
-- `weeklyDates: number[]` prop 폐기. 대신 `monthDots: Record<number, number[]>` prop 도입(`fetchSessionsInMonth` 결과를 변환).
+- `weeklyDates: number[]` prop 폐기. 대신 `dotsByDate: Record<number, DayEntry>` prop 도입(MiniCalendar Props와 동일 형태). `fetchSessionsInMonth` 결과를 RSC에서 transform 후 전달.
 - 카드 안에 MiniCalendar(`size="sm"`, `onDateClick` 미지정 = 비활성).
 
 ```diff
@@ -345,13 +465,21 @@ export function ExerciseRecCard({ exercise, included, onToggle }: Props) {
 + <Card className="p-4">
 +   <MiniCalendar
 +     year={today.getFullYear()}
-+     month={today.getMonth()}
++     month={today.getMonth() + 1}   /* 1-indexed (URL 표기와 일치) */
 +     todayDayOfMonth={today.getDate()}
-+     dotsByDate={monthDots}
++     dotsByDate={dotsByDate}
 +     size="sm"
 +   />
 + </Card>
 ```
+
+> page.tsx에서 transform 예시:
+> ```ts
+> const monthSessions = await fetchSessionsInMonth(user.id, today.getFullYear(), today.getMonth() + 1);
+> const dotsByDate: Record<number, DayEntry> = Object.fromEntries(
+>   monthSessions.map((e) => [e.dayOfMonth, { bodyPartColors: e.bodyPartColors, sessionIds: e.sessionIds }])
+> );
+> ```
 
 #### `StartForm.tsx`
 
@@ -409,102 +537,129 @@ await startSession({
 #### `src/app/(app)/history/page.tsx`
 
 ```tsx
-// RSC. 3개 쿼리 + HistoryView 클라이언트.
-import { fetchSessionsInMonth, fetchTopExercises, fetchRecentSessions } from "@/lib/queries/sessions";
+// RSC. URL: /history?y=2026&m=6  (m은 1-indexed, 사용자 친화적).
+import { fetchSessionsInMonth, fetchTopExercises } from "@/lib/queries/sessions";
 
-export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
+export default async function HistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ y?: string; m?: string }>;
+}) {
   const { y, m } = await searchParams;
   const today = new Date();
   const year = y ? Number(y) : today.getFullYear();
-  const month = m !== undefined ? Number(m) : today.getMonth();
+  // URL 1-indexed → JS 내부에서도 1-indexed 유지 (fetchSessionsInMonth가 1-indexed 받음)
+  const month = m !== undefined ? Number(m) : today.getMonth() + 1;
+
+  // 입력 검증: 범위 밖 → 오늘 달로 fallback
+  const safeYear = year >= 2000 && year <= 2100 ? year : today.getFullYear();
+  const safeMonth = month >= 1 && month <= 12 ? month : today.getMonth() + 1;
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [monthSessions, topExercises, recentSessions] = await Promise.all([
-    fetchSessionsInMonth(user.id, year, month),
+  // 캘린더 + 카드 리스트 둘 다 "선택한 월" 데이터 사용 (탭 간 시간 범위 일관성)
+  const [monthSessions, topExercises] = await Promise.all([
+    fetchSessionsInMonth(user.id, safeYear, safeMonth),
     fetchTopExercises(user.id, 8),
-    fetchRecentSessions(user.id, 4),
   ]);
+
+  const isCurrentMonth =
+    today.getMonth() + 1 === safeMonth && today.getFullYear() === safeYear;
 
   return (
     <main className="p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5">
       <h1 className="text-display font-extrabold text-text">기록</h1>
       <HistoryView
         userId={user.id}
-        year={year}
-        month={month}
-        todayDayOfMonth={today.getMonth() === month && today.getFullYear() === year ? today.getDate() : undefined}
+        year={safeYear}
+        month={safeMonth}  /* 1-indexed */
+        todayDayOfMonth={isCurrentMonth ? today.getDate() : undefined}
         monthSessions={monthSessions}
         topExercises={topExercises}
-        recentSessions={recentSessions}
       />
     </main>
   );
 }
 ```
 
+> **URL `?m=6` = 2026년 6월** (1-indexed, 사용자 친화). 내부 코드도 동일하게 1-indexed 유지. JS `Date(year, monthIndex)`는 0-indexed라 변환 필요한 경우 `safeMonth - 1`.
+> `fetchRecentSessions`(Phase 3.6, 최근 4주)는 더 이상 호출 안 함 — 리스트도 같은 월 데이터 사용해 탭 간 시간 범위 일관성 확보.
+
 #### `src/app/(app)/history/HistoryView.tsx` (NEW)
 
 ```tsx
 "use client";
-// State: selectedSessionId, selectedExerciseId, viewMode ('calendar' | 'list')
-// 상단: 월 navigation (이전/다음/오늘), 탭 (캘린더 | 리스트)
-// 캘린더 탭: MiniCalendar (md size, onDateClick → setSelectedSessionId)
-// 리스트 탭: 기존 카드 리스트 (recentSessions)
-// 하단: ProgressLine 카드 N개 (topExercises) → onClick → setSelectedExerciseId
-// Dialog: SessionDetailDialog + ExerciseProgressDialog
+// Props: userId, year, month(1-indexed), todayDayOfMonth?, monthSessions: MonthSessionEntry[], topExercises
+//
+// State:
+//   - selectedSessionId: string | null  (SessionDetailDialog 트리거)
+//   - selectedExercise: { id, name } | null  (ExerciseProgressDialog 트리거)
+//   - viewMode: 'calendar' | 'list'
+//   - isPending: boolean (useTransition, 월 이동 시 부드러운 전환)
+//
+// monthSessions → dotsByDate: Record<number, DayEntry> 변환
+//   * MiniCalendar(캘린더 탭): onDateClick={(sessionId) => setSelectedSessionId(sessionId)}
+//   * 리스트 탭: 같은 monthSessions 데이터를 시간 desc로 정렬해 카드 표시 (Phase 3.6 카드 디자인 유지)
+//     - 카드 클릭 → 첫 sessionId로 setSelectedSessionId (캘린더와 동일 흐름)
+//
+// 월 navigation (이전/다음/오늘):
+//   const [isPending, startTransition] = useTransition();
+//   const goPrev = () => {
+//     const prev = month === 1 ? { y: year - 1, m: 12 } : { y: year, m: month - 1 };
+//     startTransition(() => router.push(`/history?y=${prev.y}&m=${prev.m}`, { scroll: false }));
+//   };
+//   const goNext = () => { ... };
+//   const goToday = () => router.push("/history", { scroll: false });
+//
+// 하단: ProgressLine 카드 grid (lg:grid-cols-2 lg:gap-3)
+//   onClick={(exId) => setSelectedExercise({ id: exId, name: ... })}
+//   topExercises가 비어있으면 빈 상태 메시지
+//
+// Dialog 2개: SessionDetailDialog + ExerciseProgressDialog (sessionId/exerciseId null로 닫힘 제어)
+//
+// isPending 동안 캘린더에 opacity-60 적용 (부드러운 전환 인디케이션)
 ```
 
-> 월 이동은 `router.push('/history?y=2026&m=4')`로 URL 갱신 → 서버 RSC가 다시 호출. SPA-like UX 위해 `router.replace` + scroll preserve.
+> **월 이동:** `router.push` + `{ scroll: false }`로 스크롤 보존. `useTransition`으로 transition 중 isPending → UI 살짝 fade. RSC 재호출은 자동.
+> **탭 간 시간 범위:** 캘린더 / 리스트 둘 다 `monthSessions` (선택한 월) — 사용자 혼란 차단.
 
-### 4.4 globals.css 부위 색 토큰
+### 4.4 부위 색 — `body_parts.color` 직접 사용
 
-```css
-/* :root (light) */
---bp-chest: #FF6B6B;
---bp-back: #4ECDC4;
---bp-shoulder: #A78BFA;
---bp-arm: #FFD93D;
---bp-legs: #95E1D3;
---bp-abs: #F8B400;
---bp-cardio: #74B9FF;
---bp-other: #B2BEC3;
+**새 CSS 토큰 만들지 않음.** DB seed에 이미 모든 부위의 색이 정의되어 있음:
 
-/* .dark — 채도 살짝 낮추고 명도 보정 */
---bp-chest: #E55656;
---bp-back: #3DB5AB;
---bp-shoulder: #8B6FE0;
---bp-arm: #E5C12B;
---bp-legs: #7BC9B7;
---bp-abs: #D89500;
---bp-cardio: #5A9BE5;
---bp-other: #8E97A0;
+| id | code | name_ko | color |
+|----|------|---------|-------|
+| 1 | chest | 가슴 | `#FF6B6B` |
+| 2 | back | 등 | `#4ECDC4` |
+| 3 | shoulder | 어깨 | `#FFE66D` |
+| 4 | trap | 승모근 | `#95E1D3` |
+| 5 | arm | 팔 | `#C9B1FF` |
+| 6 | leg | 허벅지 | `#F38181` |
+| 7 | glute | 엉덩이 | `#FCBAD3` |
+| 8 | core | 복부 | `#A8E6CF` |
 
-/* @theme inline */
---color-bp-chest: var(--bp-chest);
-/* ... 나머지 7개 */
-```
+**전략:**
+- RSC 쿼리(`fetchSessionsInMonth` 등)가 join으로 `body_parts.color`를 같이 fetch
+- 컴포넌트는 hex 문자열을 `style={{ backgroundColor: color }}`로 직접 적용 — Tailwind class 안 씀
+- 다크모드는 카드/캘린더 도트 컨테이너에 `dark:saturate-90 dark:brightness-95` 적용해서 살짝 톤다운 (개별 토큰 안 만듦)
+- 새 부위 추가는 Plan 5 운동 CRUD에서 DB seed에 추가 — 코드 변경 없음
 
-**body_parts.id ↔ 토큰 매핑 헬퍼:**
+**얇은 헬퍼 1개만:**
 
 ```ts
-// src/lib/workout/body-part-colors.ts
-const ID_TO_TOKEN: Record<number, string> = {
-  1: "bp-chest", 2: "bp-back", 3: "bp-shoulder", 4: "bp-arm",
-  5: "bp-legs", 6: "bp-abs", 7: "bp-cardio", 8: "bp-other",
-};
-
-export function bodyPartColorClass(id: number): string {
-  return `bg-${ID_TO_TOKEN[id] ?? "bp-other"}`;
-}
-export function bodyPartColorVar(id: number): string {
-  return `var(--color-${ID_TO_TOKEN[id] ?? "bp-other"})`;
+// src/lib/workout/body-part-color.ts
+export function bodyPartStyle(color: string): React.CSSProperties {
+  return { backgroundColor: color };
 }
 ```
 
-> body_parts.id는 1~8 고정(global seed). 새 부위 추가 시 토큰도 같이 추가 — Plan 5 운동 CRUD에서 처리.
+> 헬퍼는 사실상 trivial이지만 추후 다크모드 톤다운 / 알파 채널 처리 / 미정의 fallback 등이 들어갈 자리. 한 곳에 집중.
+
+> **`body_parts.color` 컬럼은 단일 진실 소스가 됨.** 색을 바꾸려면 migration 추가만 하면 됨. CSS 코드 변경 0.
 
 ---
 
@@ -515,19 +670,24 @@ export function bodyPartColorVar(id: number): string {
 ```ts
 // src/lib/queries/sessions.ts (추가)
 export type MonthSessionEntry = {
-  dayOfMonth: number;          // 1~31
-  sessionIds: string[];         // 같은 날 여러 세션 가능
-  bodyPartIds: number[];        // 그 날 운동한 부위 (unique)
+  dayOfMonth: number;             // 1~31
+  sessionIds: string[];            // 같은 날 여러 세션 가능
+  bodyPartColors: string[];        // unique 도트 색 (body_parts.color에서 직접)
 };
 
+/**
+ * 특정 월의 세션 목록 — 캘린더 도트 + 리스트용.
+ * @param month 1-indexed (1=Jan, 12=Dec)
+ */
 export async function fetchSessionsInMonth(
   userId: string,
   year: number,
-  month: number,  // 0-indexed
+  month: number,
 ): Promise<MonthSessionEntry[]> {
   const supabase = await createClient();
-  const start = new Date(year, month, 1).toISOString();
-  const end = new Date(year, month + 1, 1).toISOString();
+  // JS Date는 0-indexed. month=1(Jan) → new Date(y, 0, 1).
+  const start = new Date(year, month - 1, 1).toISOString();
+  const end = new Date(year, month, 1).toISOString();
 
   const { data, error } = await supabase
     .from("workout_sessions")
@@ -536,7 +696,10 @@ export async function fetchSessionsInMonth(
       started_at,
       workout_sets!inner (
         exercises!inner (
-          exercise_body_parts ( body_part_id, is_primary )
+          exercise_body_parts (
+            is_primary,
+            body_parts ( color )
+          )
         )
       )
     `)
@@ -546,26 +709,41 @@ export async function fetchSessionsInMonth(
 
   if (error) throw error;
 
-  // 날짜별 집계: { dayOfMonth, sessionIds, bodyPartIds }
+  // 날짜별 집계: { dayOfMonth, sessionIds, bodyPartColors (unique) }
   const byDay = new Map<number, MonthSessionEntry>();
-  for (const row of data ?? []) {
+  for (const row of (data ?? []) as Array<{
+    id: string;
+    started_at: string;
+    workout_sets: Array<{
+      exercises: {
+        exercise_body_parts: Array<{
+          is_primary: boolean | null;
+          body_parts: { color: string } | null;
+        }>;
+      };
+    }>;
+  }>) {
     const day = new Date(row.started_at).getDate();
-    if (!byDay.has(day)) byDay.set(day, { dayOfMonth: day, sessionIds: [], bodyPartIds: [] });
+    if (!byDay.has(day)) {
+      byDay.set(day, { dayOfMonth: day, sessionIds: [], bodyPartColors: [] });
+    }
     const entry = byDay.get(day)!;
-    entry.sessionIds.push(row.id);
-    for (const ws of row.workout_sets as any[]) {
+    if (!entry.sessionIds.includes(row.id)) entry.sessionIds.push(row.id);
+    for (const ws of row.workout_sets) {
       for (const ebp of ws.exercises.exercise_body_parts) {
-        if (ebp.is_primary && !entry.bodyPartIds.includes(ebp.body_part_id)) {
-          entry.bodyPartIds.push(ebp.body_part_id);
+        if (ebp.is_primary === true && ebp.body_parts?.color) {
+          if (!entry.bodyPartColors.includes(ebp.body_parts.color)) {
+            entry.bodyPartColors.push(ebp.body_parts.color);
+          }
         }
       }
     }
   }
-  return Array.from(byDay.values());
+  return Array.from(byDay.values()).sort((a, b) => a.dayOfMonth - b.dayOfMonth);
 }
 ```
 
-> `is_primary=true`만 도트로 표시 (한 운동의 secondary 부위는 도트에서 제외).
+> `is_primary === true`만 도트로 표시. body_parts join으로 `color` hex 같이 fetch. `is_primary: boolean | null`이라 명시적 `=== true` 비교.
 
 ### 5.2 신규 쿼리: `fetchSessionWithDetails`
 
@@ -574,18 +752,25 @@ export type SessionDetail = {
   id: string;
   started_at: string;
   ended_at: string | null;
-  bodyParts: Array<{ id: number; name_ko: string }>;
+  bodyParts: Array<{ id: number; name_ko: string; color: string }>;     // color 포함
   exercises: Array<{
     id: string;
     name: string;
-    sets: Array<{ set_number: number; weight_kg: number; reps: number; parent_set_id: string | null }>;
+    sets: Array<{
+      set_number: number;
+      weight_kg: number | null;       // nullable — UI에서 ?? 가드
+      reps: number | null;             // nullable
+      parent_set_id: string | null;
+    }>;
   }>;
 };
 
 export async function fetchSessionWithDetails(sessionId: string): Promise<SessionDetail | null> {
   // workout_sessions + workout_sets + exercises + exercise_body_parts + body_parts join
-  // 본인 세션인지 RLS가 보장 (auth.uid() check)
-  // 결과 aggregate: 운동별 grouping, 부위 unique
+  // - .eq('id', sessionId) — RLS가 본인 세션만 노출
+  // - bodyParts unique 집계 (is_primary 무관, 그 세션의 모든 매핑된 부위)
+  // - exercises group: parent_set_id IS NULL 메인 세트만 표시 (드롭세트는 Plan 4 스코프 외)
+  // - sets sort: set_number asc
 }
 ```
 
@@ -604,10 +789,17 @@ export async function fetchExerciseProgression(
   exerciseId: string,
   weeksBack: number = 12,
 ): Promise<ProgressionPoint[]> {
-  // workout_sets + workout_sessions join, .eq('exercise_id', exerciseId), .eq('user_id', userId)
-  // parent_set_id IS NULL (메인 세트만)
-  // 세션 단위로 group → 각 세션마다 max(estimateOneRepMax(w, r)), sum(w*r), max(w)
-  // 시간순 asc
+  // - workout_sets + workout_sessions!inner join
+  // - .eq('exercise_id', exerciseId), .eq('workout_sessions.user_id', userId)
+  // - .is('parent_set_id', null)  (메인 세트만)
+  // - .not('weight_kg', 'is', null).not('reps', 'is', null)  (null 가드 — Epley NaN 방지)
+  // - .gte('workout_sessions.started_at', <cutoff>)  (12주 전부터)
+  // - 세션 단위로 group → 각 세션마다:
+  //     oneRepMax = Math.max(...sets.map(s => estimateOneRepMax(s.weight_kg, s.reps)))
+  //     volume = sum(weight_kg * reps)
+  //     maxWeight = Math.max(...weights)
+  // - 시간순 asc
+  // - 결과 0~1개여도 그대로 반환 (UI에서 length < 2 빈 메시지)
 }
 ```
 
@@ -632,18 +824,32 @@ export async function fetchTopExercises(userId: string, limit: number = 8): Prom
 
 ```ts
 // src/lib/workout/one-rep-max.ts
-export function estimateOneRepMax(weight: number, reps: number): number {
+/**
+ * Epley 1RM 추정. weight 또는 reps가 null/0/음수면 0 반환.
+ * weight_kg / reps 컬럼이 nullable이므로 null 가드 필수.
+ */
+export function estimateOneRepMax(
+  weight: number | null | undefined,
+  reps: number | null | undefined,
+): number {
+  if (weight == null || reps == null) return 0;
   if (reps <= 0 || weight <= 0) return 0;
   if (reps === 1) return weight;
   // Epley: weight × (1 + reps/30)
   return Math.round(weight * (1 + reps / 30) * 10) / 10;
 }
 
-export function calcSetVolume(weight: number, reps: number): number {
+export function calcSetVolume(
+  weight: number | null | undefined,
+  reps: number | null | undefined,
+): number {
+  if (weight == null || reps == null) return 0;
   if (weight <= 0 || reps <= 0) return 0;
   return weight * reps;
 }
 ```
+
+> 두 함수 모두 null/undefined 가드 + 0/음수 가드. `fetchExerciseProgression`이 추가로 SQL 레벨에서 not-null 필터링하지만, 함수 자체도 안전하게 처리해 NaN 전파 차단.
 
 ### 5.6 클라이언트용 쿼리 wrapper
 
@@ -674,7 +880,7 @@ export async function fetchExerciseProgressionClient(exerciseId: string, weeksBa
 |------|------|------|
 | `/dashboard` | MOD | 주간 칩 → MiniCalendar |
 | `/workout/new` | MOD | StartForm 체크박스 |
-| `/history` | MOD | 캘린더 탭 + 리스트 탭 + 차트 카드 + 모달 2개. URL `?y=2026&m=5` 지원 (월 이동). |
+| `/history` | MOD | 캘린더 탭 + 리스트 탭 + 차트 카드 + 모달 2개. URL `?y=2026&m=6` (m **1-indexed**, 사용자 친화). 범위 밖 입력 시 오늘 달로 fallback. |
 | `/history/[sessionId]` | — | 안 만듦 (모달로 처리) |
 | 라우트 추가 | — | 없음 |
 
@@ -682,12 +888,15 @@ export async function fetchExerciseProgressionClient(exerciseId: string, weeksBa
 
 ## 7. 오류 처리 / UX states
 
-- `/history/loading.tsx` (이미 존재) — 캘린더 + 차트 카드 영역 skeleton 추가
+- `/history/loading.tsx` (이미 존재) — 캘린더 + 차트 카드 영역 skeleton 추가 (6주×7 셀 grid + 8 카드 placeholder)
 - `/history/error.tsx` — 그대로
 - SessionDetailDialog / ExerciseProgressDialog: useQuery `isLoading` → Skeleton inside dialog, `error` → 빈 메시지 + 재시도 안내
 - ProgressLine: `data.length < 2` → "기록 부족" 메시지 카드
-- 캘린더 빈 달(데이터 0): "이 달엔 기록이 없어요" + 이전 달 버튼
-- TopExercises 0개(신규 사용자): "8개 미만이라 추이를 보여드릴 수 없어요. 헬스장에서 더 채워보세요." + /workout/new 링크
+- 캘린더 빈 달(monthSessions 0): "이 달엔 기록이 없어요" + 이전 달 버튼
+- TopExercises 0개(신규 사용자): "아직 추이를 보여줄 운동이 없어요. 헬스장에서 더 채워보세요." + /workout/new 링크
+- **같은 날 여러 세션:** MiniCalendar 셀에 도트만 표시(개수 구분 X), 클릭 시 첫 sessionId만 모달로. aria-label에 `세션 N개`로 카운트 노출 (스크린리더). 여러 세션 picker UI는 Plan 4.1+ 후보.
+- **월 navigation 로딩:** `useTransition` + `router.push({ scroll: false })`. `isPending` 동안 캘린더 컨테이너에 `opacity-60` → 부드러운 전환.
+- **recharts SSR/hydration:** ProgressLine / MultiSeriesChart 모두 `"use client"`. 서버에서는 ResponsiveContainer 자식이 0x0으로 렌더 → 클라이언트 hydration 시 width/height 계산. dimension prop 명시 (`<ResponsiveContainer width="100%" height="100%">`)로 hydration mismatch 없음. 부모 컨테이너에 명시적 높이(`h-16`, `h-64`) 부여로 ResponsiveContainer가 0 높이 trap 안 빠짐.
 
 ---
 
@@ -727,17 +936,20 @@ export async function fetchExerciseProgressionClient(exerciseId: string, weeksBa
 
 | 리스크 | 영향 | 완화 |
 |---|---|---|
-| recharts ResponsiveContainer 가 jsdom에서 0×0 — 테스트 실패 | 중간 | 테스트에서 명시적 div wrapper. 또는 recharts mock. ProgressLine은 data-driven 테스트로만(렌더링 자체 아닌 props 검증). |
-| `fetchSessionsInMonth`가 큰 join (sessions × sets × exercises × ebp) | 중간 | 한 달 ≤ 31 sessions, ≤ 200 sets. 단일 query로 충분. Plan 5 이후 materialized view 검토. |
+| recharts ResponsiveContainer 가 jsdom에서 0×0 — 테스트 실패 | 중간 | ProgressLine은 데이터 가공 로직(증감 계산)만 단위 테스트. 차트 렌더링 자체는 manual E2E로 검증. 필요 시 `vi.mock('recharts')`로 stub. |
+| `fetchSessionsInMonth`가 큰 join (sessions × sets × exercises × ebp × body_parts) | 중간 | 한 달 ≤ 31 sessions, ≤ 200 sets. 단일 query로 충분. Plan 5 이후 materialized view 검토. |
 | 1RM Epley 공식이 reps > 12 일 때 오차 큼 | 낮음 | 헬스장 메인 세트 보통 1~12회. >12회는 근지구력 영역이라 1RM 자체 적용 부적합 → 차트엔 그대로 표시. |
-| body_parts.id가 1~8 fixed → 새 부위 추가 시 토큰 갱신 누락 | 낮음 | Plan 5 CRUD에서 부위 추가 UI 만들 때 토큰 추가 가이드. 임시 unknown id는 `bp-other`로 fallback. |
-| 캘린더 도트 색 매핑이 ID hard-code 의존 | 중간 | `body-part-colors.ts` 헬퍼 1곳에 집중. 변경 영향 최소화. |
+| body_parts 추가/색 변경 시 — | 낮음 | DB seed에 row 추가만 하면 모든 UI 자동 반영 (단일 진실 소스). 코드 변경 0. |
+| weight_kg / reps 가 NULL 인 세트 → Epley NaN | 해결됨 | `estimateOneRepMax`/`calcSetVolume`에 null 가드 + `fetchExerciseProgression`에 SQL `.not('weight_kg','is',null)` 이중 차단. |
 | SessionDetailDialog `useQuery` 결과 캐시가 모달 닫혀도 살아있음 | 낮음 | 캐시 살아있음 → 같은 세션 재오픈 시 즉시 표시. queryKey에 sessionId 포함되어 분리. |
-| /history URL `?y&m` 직접 입력 (예: y=2050) | 낮음 | 빈 결과 → "이 달엔 기록이 없어요". 미래 날짜 입력해도 에러 X. |
+| /history URL `?y&m` 직접 입력 (예: y=2050, m=15) | 낮음 | safeYear/safeMonth 범위 검증 후 오늘 달로 fallback. 빈 결과 → "이 달엔 기록이 없어요". |
 | recharts dependency 신규 추가로 번들 사이즈 | 낮음 | 18kB gzip. /history에만 dynamic import 고려 (Phase 4.1에서 최적화). |
-| Dashboard 미니 캘린더가 lg에서 너무 큰가 | 낮음 | size="sm" 토큰 + lg에서 max-w 제한. /history는 size="md". |
-| 캐시 stale: 새 세션 끝나도 /history 캘린더에 안 보임 | 중간 | `finishSession` 후 `revalidatePath('/history')` 추가. 대시보드도 `revalidatePath('/dashboard')` 이미 있음. |
-| StartForm에서 부위 chip 토글 시 excludedExerciseIds reset 필요 | 낮음 | `toggleBP`에서 `setExcludedExerciseIds(new Set())`도 같이 호출. |
+| Dashboard 미니 캘린더가 lg에서 너무 큰가 | 낮음 | `size="sm"` props + lg에서 컨테이너 max-w 제한. /history는 `size="md"`. |
+| 캐시 stale: 새 세션 끝나도 /history 캘린더에 안 보임 | 해결됨 | **`finishSession`(in `src/app/(app)/workout/actions.ts`)에 `revalidatePath('/history')` 명시적 추가** — Chunk 7 sub-task로 포함. 기존 `revalidatePath('/dashboard')` 유지. |
+| StartForm에서 부위 chip 토글 시 excludedExerciseIds 잔존 — 다른 부위 추천에 옛 제외 ID 남음 | 낮음 | `toggleBP` 내부에서 `setExcludedExerciseIds(new Set())` 명시적 호출 (useEffect 아님). |
+| 같은 날 여러 세션 → 첫 세션만 모달 표시 | 낮음 | 사용자 대부분 하루 1회 운동. 다중 세션 picker UI는 Plan 4.1+. `aria-label`로 카운트 노출. |
+| 월 navigation 시 RSC 재호출 동안 빈 화면 | 낮음 | `useTransition` + `router.push({ scroll: false })`. `isPending` 동안 캘린더 `opacity-60`로 transition 인디케이터. |
+| recharts SSR hydration warning | 낮음 | 모든 차트 컴포넌트 `"use client"`. 부모에 명시적 높이 + `<ResponsiveContainer width="100%" height="100%">`로 dimension mismatch 없음. |
 
 ---
 
@@ -745,14 +957,14 @@ export async function fetchExerciseProgressionClient(exerciseId: string, weeksBa
 
 | Chunk | 내용 | 예상 |
 |------:|------|------|
-| 1 | recharts 의존성 추가 + `one-rep-max.ts` + tests (4 tests) + globals.css `--bp-*` 토큰 + `body-part-colors.ts` | 1h |
-| 2 | `MiniCalendar` 컴포넌트 + tests (2 tests) | 1.5h |
-| 3 | `fetchSessionsInMonth` 쿼리 + Dashboard MiniCalendar 교체 + 회귀 | 1.5h |
-| 4 | `fetchSessionWithDetails` + `SessionDetailDialog` + 클라이언트 wrapper | 1.5h |
-| 5 | `fetchExerciseProgression` + `fetchTopExercises` + `ProgressLine` + `MultiSeriesChart` + `ExerciseProgressDialog` + tests | 2h |
-| 6 | `/history` page + `HistoryView` 클라이언트 (탭, 월 navigation, 모달 트리거) | 2h |
-| 7 | R4 — `ExerciseRecCard` + `StartForm` 체크박스 wiring + 부위 chip 토글 시 excluded reset | 1h |
-| 8 | build / test 28+ / log / PR / 머지 / `v0.4.0-history-charts` 태그 | 1h |
+| 1 | recharts 의존성 추가 + `one-rep-max.ts` (null 가드) + `body-part-color.ts` 헬퍼 + tests (4 Epley tests) | 1h |
+| 2 | `MiniCalendar` (6주 고정 그리드, role/aria, DayEntry props) + tests (2 tests — 도트 + 클릭 콜백) | 1.5h |
+| 3 | `fetchSessionsInMonth` (body_parts.color join, is_primary 필터) + Dashboard 미니 캘린더 교체 + 회귀 22 PASS | 1.5h |
+| 4 | `fetchSessionWithDetails` (color 포함) + 클라이언트 wrapper `sessions-client.ts` + `SessionDetailDialog` (formatDateKo + BodyPartTag 인라인) | 1.5h |
+| 5 | `fetchExerciseProgression` (not-null SQL 필터) + `fetchTopExercises` + `ProgressLine` (span children) + `MultiSeriesChart` + `ExerciseProgressDialog` + tests (2 tests — progress-line 증감) | 2h |
+| 6 | `/history` page (URL m 1-indexed, safeYear/safeMonth) + `HistoryView` 클라이언트 (탭 + useTransition 월 이동 + 같은 monthSessions로 리스트 일관성) + 모달 트리거 | 2h |
+| 7 | R4 — `ExerciseRecCard` (base-ui Checkbox) + `StartForm` excludedExerciseIds wiring + 부위 chip 토글 시 reset + **`finishSession`에 `revalidatePath('/history')` 추가** (`src/app/(app)/workout/actions.ts`) | 1h |
+| 8 | build / 28+ tests / `docs/import/history-charts-log.md` / PR / 머지 / `v0.4.0-history-charts` 태그 | 1h |
 
 총 ~11.5h (1.5일).
 
@@ -774,3 +986,4 @@ export async function fetchExerciseProgressionClient(exerciseId: string, weeksBa
 | Version | Date | Change |
 |---|---|---|
 | v1 | 2026-06-01 | Initial draft after brainstorming session (사용자 선택: 라우트 C 하이브리드 / 차트 A+D / R4 체크박스 / 세션 상세 모달 / 미니 캘린더는 주간 칩 대체 / 1RM Epley / recharts 도입) |
+| v2 | 2026-06-01 | critic round 1 fixes: (CRITICAL) body_parts ID hardcoded 매핑이 DB seed와 5/8 부위 불일치 → CSS 토큰 시스템 폐기, **`body_parts.color` DB 컬럼 직접 사용으로 단일 진실 소스화**. RSC 쿼리들이 join으로 color fetch, 컴포넌트는 `style={{ backgroundColor }}` 직접. (CRITICAL→MAJOR) weight_kg/reps NULL 가드 — `estimateOneRepMax`/`calcSetVolume`에 null check + `fetchExerciseProgression`에 SQL `.not(...)` 이중 차단. (MAJOR) `formatDateKo`/`BodyPartTag` 인라인 정의, ExerciseProgressDialog 누락 imports(Skeleton, fetchExerciseProgressionClient) 추가. (MAJOR) Checkbox base-ui API 명시 — `(checked: boolean) => void`. (MAJOR) `finishSession`에 `revalidatePath('/history')` 추가를 Chunk 7 sub-task로 명시. (MISSING) MiniCalendar Props에 `sessionIds` 통합 → `DayEntry { bodyPartColors, sessionIds }`. 같은 날 여러 세션 → 첫 sessionId만 모달, aria-label에 카운트 노출. (MISSING) URL `m` 1-indexed로 변경(사용자 친화), safeYear/safeMonth 범위 검증. (MISSING) `<button>` 자식 `<div>` → `<span>` (HTML5 phrasing). (MISSING) MiniCalendar 6주 고정, role="grid"/gridcell + aria-label. 화살표 키 네비는 Plan 4.1로 연기. (MISSING) HistoryView 리스트 탭도 선택한 월 데이터로 통일 (탭 간 시간 범위 일관성). useTransition + router.push({ scroll: false }) 월 이동. (MISSING) recharts SSR — 부모 명시 높이 + ResponsiveContainer width/height 100%. Chunk 1에서 globals.css 토큰 작업 제거, Chunk 7에 finishSession 갱신 추가. |
