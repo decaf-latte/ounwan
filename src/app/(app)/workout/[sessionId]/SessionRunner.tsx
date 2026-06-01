@@ -23,7 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   finishSession,
   removeExerciseFromSession,
-} from "@/app/workout/actions";
+} from "@/app/(app)/workout/actions";
 import type { WorkoutSession } from "@/lib/queries/sessions";
 import type { ExerciseWithBodyParts } from "@/lib/queries/exercises";
 import type {

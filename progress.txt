@@ -1,0 +1,17 @@
+# Phase 3.5 Design System Renewal — progress
+
+## Environment / learnings
+- Project root: /Users/jeonhyejin/Desktop/사이드프로젝트/gym-routine-app
+- Korean path breaks the Read tool (unicode); use Write fresh or bash cat for files under this dir.
+- vitest env = node (not jsdom). motion.test stubs window via vi.stubGlobal — fine. progress-ring test only tests pure computeDashOffset — fine.
+- tsconfig path alias "@/" -> ./src ; vitest alias mirrors it.
+- pnpm 11.2.2, node 23, Next 16.2.6 / React 19.2.4 / Tailwind v4 / next-themes 0.4.6 already installed.
+- DB types confirmed: body_parts.name_ko, workout_sets(parent_set_id,weight_kg,reps,created_at,exercise_id,session_id), exercises.user_id, workout_sessions.user_id/started_at.
+
+## US-001 Chunk 1 — DONE (commits cd1ee0f, 349ab35, 2844982)
+- Added canvas-confetti ^1.9.4 + react-swipeable ^7.0.2 + @types/canvas-confetti ^1.9.0.
+- globals.css fully replaced: Pretendard CDN, @theme inline tokens (incl. text-size tokens added early from Chunk 3.2.2), :root light + .dark warm-brown, raw shadcn vars, reduced-motion block, gradient body.
+- theme-provider.tsx created; layout.tsx Geist removed + ThemeProvider mounted outside QueryProvider + suppressHydrationWarning.
+- Verified: pnpm tsc --noEmit = 0 errors, pnpm lint clean.
+- NOTE: text-size tokens (--text-tiny..--text-display) already in globals.css so Chunk 3.2.2 is pre-done.
+- Visual browser check (gradient/Pretendard/dark toggle) deferred to Chunk 6 manual E2E.

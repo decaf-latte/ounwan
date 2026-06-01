@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { DayChip } from "@/components/ui/day-chip";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { signOut } from "@/app/dashboard/actions";
+import { signOut } from "@/app/(app)/dashboard/actions";
 import type { TodaySession } from "@/lib/queries/sessions";
 import type { RecentExercise } from "@/lib/queries/sets";
 
