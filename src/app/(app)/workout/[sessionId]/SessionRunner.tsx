@@ -60,6 +60,7 @@ type SaveSetCtx = {
 
 type ExerciseCardWrapperProps = {
   exerciseId: string;
+  exerciseName: string;
   isActive: boolean;
   isAnyActive: boolean;
   isRemoving: boolean;
@@ -69,6 +70,7 @@ type ExerciseCardWrapperProps = {
 
 function ExerciseCardWrapper({
   exerciseId,
+  exerciseName,
   isActive,
   isAnyActive,
   isRemoving,
@@ -87,23 +89,38 @@ function ExerciseCardWrapper({
   });
 
   return (
-    <div
-      {...swipeHandlers}
-      className="relative overflow-hidden rounded-xl mt-3"
-    >
-      {/* 뒤에 깔리는 삭제 버튼 (swipe-left 시 노출) */}
+    <div className="relative overflow-hidden rounded-xl mt-3">
+      {/* ✕ 버튼 — swipe-tracked Card 밖 absolute sibling (z-10). 탭이 swipe로 가로채지지 않음. */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(exerciseId);
+        }}
+        disabled={isRemoving}
+        className={cn(
+          "absolute top-2 right-2 z-10 p-2 rounded-md",
+          "text-text-muted hover:text-text hover:bg-accent-soft",
+        )}
+        aria-label={`${exerciseName} 운동 삭제`}
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* swipe-left 시 노출되는 뒤쪽 삭제 버튼 */}
       <button
         type="button"
         onClick={() => onRemove(exerciseId)}
         disabled={isRemoving}
         className="absolute right-0 top-0 bottom-0 w-20 bg-danger text-surface font-bold text-body flex items-center justify-center"
-        aria-label="운동 삭제"
+        aria-label={`${exerciseName} 운동 삭제`}
       >
         삭제
       </button>
 
-      {/* 실제 카드 — translate로 슬라이드 */}
+      {/* 카드 본체 — swipe handler 여기에만 부착 */}
       <Card
+        {...swipeHandlers}
         className={cn(
           "p-4 relative transition-transform duration-200 ease-soft",
           revealed && "-translate-x-20",
@@ -112,20 +129,6 @@ function ExerciseCardWrapper({
         )}
         onClick={() => revealed && setRevealed(false)}
       >
-        {/* ✕ 백업 — 데스크탑/접근성용. 살짝 크게(p-2). */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(exerciseId);
-          }}
-          disabled={isRemoving}
-          className="absolute top-2 right-2 p-2 rounded-md text-text-ghost hover:text-text-muted hover:bg-accent-soft"
-          aria-label="운동 삭제 (버튼)"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         {children}
       </Card>
     </div>
@@ -348,6 +351,7 @@ export function SessionRunner({
       <ExerciseCardWrapper
         key={ex.id}
         exerciseId={ex.id}
+        exerciseName={ex.name}
         isActive={ex.id === activeExerciseId}
         isAnyActive={activeExerciseId !== null}
         isRemoving={isRemoving}
