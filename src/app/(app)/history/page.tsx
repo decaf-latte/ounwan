@@ -1,49 +1,57 @@
+// src/app/(app)/history/page.tsx
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchRecentSessions } from "@/lib/queries/sessions";
+import {
+  fetchSessionsInMonth,
+  fetchTopExercises,
+} from "@/lib/queries/sessions";
+import { HistoryView } from "./HistoryView";
 
-export default async function HistoryPage() {
+type PageProps = {
+  searchParams: Promise<{ y?: string; m?: string }>;
+};
+
+export default async function HistoryPage({ searchParams }: PageProps) {
+  const { y, m } = await searchParams;
+  const today = new Date();
+
+  const yearInput = y ? Number(y) : today.getFullYear();
+  const monthInput = m !== undefined ? Number(m) : today.getMonth() + 1;
+
+  // 범위 검증 — 잘못된 값은 오늘 달로 fallback
+  const safeYear =
+    Number.isFinite(yearInput) && yearInput >= 2000 && yearInput <= 2100
+      ? yearInput
+      : today.getFullYear();
+  const safeMonth =
+    Number.isFinite(monthInput) && monthInput >= 1 && monthInput <= 12
+      ? monthInput
+      : today.getMonth() + 1;
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const sessions = await fetchRecentSessions(user.id, 4);
+  const [monthSessions, topExercises] = await Promise.all([
+    fetchSessionsInMonth(user.id, safeYear, safeMonth),
+    fetchTopExercises(user.id, 8),
+  ]);
+
+  const isCurrentMonth =
+    today.getMonth() + 1 === safeMonth && today.getFullYear() === safeYear;
 
   return (
-    <main className="p-5 max-w-md lg:max-w-3xl mx-auto pb-32 lg:pb-5">
+    <main className="p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5">
       <h1 className="text-display font-extrabold text-text">기록</h1>
-      <p className="text-body text-text-muted mt-1">최근 4주 운동 기록</p>
-
-      <div className="mt-5 space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-        {sessions.length === 0 ? (
-          <p className="text-body text-text-muted">
-            아직 기록이 없어요. 첫 운동을 시작해보세요.
-          </p>
-        ) : (
-          sessions.map((s) => (
-            <article
-              key={s.id}
-              className="rounded-xl border border-border p-4 bg-surface"
-            >
-              <div className="text-caption text-text-muted">
-                {new Date(s.started_at).toLocaleString("ko-KR", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </div>
-              <div className="text-h3 font-bold text-text mt-1">
-                {s.bodyParts.length > 0 ? s.bodyParts.join(", ") : "운동"}
-              </div>
-              <div className="text-body text-text-muted mt-1">
-                운동 {s.exerciseCount}개 · 세트 {s.setCount}개
-                {s.durationMin ? ` · ${s.durationMin}분` : ""}
-              </div>
-            </article>
-          ))
-        )}
-      </div>
+      <HistoryView
+        year={safeYear}
+        month={safeMonth}
+        todayDayOfMonth={isCurrentMonth ? today.getDate() : undefined}
+        monthSessions={monthSessions}
+        topExercises={topExercises}
+      />
     </main>
   );
 }
