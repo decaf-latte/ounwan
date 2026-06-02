@@ -62,7 +62,7 @@ export function SetRow({
   // active
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="w-6 h-6 bg-surface border-2 border-accent-soft text-text-muted rounded-full flex items-center justify-center text-caption font-semibold">
+      <div className="shrink-0 w-6 h-6 bg-surface border-2 border-accent-soft text-text-muted rounded-full flex items-center justify-center text-caption font-semibold">
         {setNumber}
       </div>
       <input
@@ -70,16 +70,16 @@ export function SetRow({
         type="number"
         step="0.5"
         placeholder="kg"
-        className="flex-1 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
+        className="min-w-0 flex-1 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
         value={weight}
         onChange={(e) => onWeightChange?.(e.target.value)}
       />
-      <span className="text-caption text-text-muted">×</span>
+      <span className="shrink-0 text-caption text-text-muted">×</span>
       <input
         inputMode="numeric"
         type="number"
         placeholder="회"
-        className="w-14 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
+        className="w-16 shrink-0 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
         value={reps}
         onChange={(e) => onRepsChange?.(e.target.value)}
       />
@@ -88,7 +88,7 @@ export function SetRow({
         disabled={checkDisabled}
         onClick={onCheck}
         className={cn(
-          "w-8 h-8 rounded-md flex items-center justify-center font-bold text-body",
+          "shrink-0 w-8 h-8 rounded-md flex items-center justify-center font-bold text-body",
           checkDisabled
             ? "bg-surface border border-accent-soft text-text-ghost"
             : "bg-accent text-text",
