@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   recommendExercises,
+  candidatesForBodyParts,
   type RecommendInput,
 } from "@/lib/workout/recommendation";
 import type { ExerciseWithBodyParts } from "@/lib/queries/exercises";
@@ -141,5 +142,44 @@ describe("recommendExercises", () => {
     };
     const result = recommendExercises(input);
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("candidatesForBodyParts", () => {
+  it("선택 부위에 primary로 매칭되는 모든 운동을 상위 N 제한 없이 반환한다", () => {
+    const exs = [
+      makeEx("a", 1),
+      makeEx("b", 1),
+      makeEx("c", 1),
+      makeEx("d", 1), // 추천 top-3 밖이라도 포함돼야 함 (로잉머신 케이스)
+      makeEx("x", 2),
+    ];
+    const result = candidatesForBodyParts(exs, [1]);
+    expect(result.map((e) => e.id).sort()).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("기본값은 단측 변형(parent_exercise_id 있는 운동)을 제외한다", () => {
+    const variant: ExerciseWithBodyParts = {
+      ...makeEx("a-uni", 1),
+      parent_exercise_id: "a",
+      is_unilateral: true,
+    };
+    const exs = [makeEx("a", 1), variant];
+    expect(candidatesForBodyParts(exs, [1]).map((e) => e.id)).toEqual(["a"]);
+    expect(
+      candidatesForBodyParts(exs, [1], true).map((e) => e.id).sort(),
+    ).toEqual(["a", "a-uni"]);
+  });
+
+  it("is_primary=false 매핑만 있는 부위는 후보에서 제외한다", () => {
+    const ex: ExerciseWithBodyParts = {
+      ...makeEx("dl", 2),
+      exercise_body_parts: [
+        { exercise_id: "dl", body_part_id: 2, is_primary: true },
+        { exercise_id: "dl", body_part_id: 6, is_primary: false },
+      ],
+    };
+    expect(candidatesForBodyParts([ex], [6])).toHaveLength(0);
+    expect(candidatesForBodyParts([ex], [2]).map((e) => e.id)).toEqual(["dl"]);
   });
 });
