@@ -18,7 +18,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { recommendExercises } from "@/lib/workout/recommendation";
+import {
+  recommendExercises,
+  candidatesForBodyParts,
+} from "@/lib/workout/recommendation";
 import { startSession, saveTemplate } from "@/app/(app)/workout/actions";
 import { BodyPartChip } from "@/components/ui/body-part-chip";
 import type { StartFormProps } from "./start-form-types";
@@ -37,6 +40,18 @@ export function StartForm({
   const [excludedExerciseIds, setExcludedExerciseIds] = useState<Set<string>>(
     new Set(),
   );
+  // 추천 상위 3개 밖에서 사용자가 직접 추가한 운동 (기본 미포함)
+  const [addedExerciseIds, setAddedExerciseIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showOthers, setShowOthers] = useState(false);
+
+  const resetSelection = () => {
+    setShowRecommendations(false);
+    setExcludedExerciseIds(new Set());
+    setAddedExerciseIds(new Set());
+    setShowOthers(false);
+  };
 
   const toggleBP = (id: number) => {
     setSelectedBP((prev) => {
@@ -45,8 +60,7 @@ export function StartForm({
       else next.add(id);
       return next;
     });
-    setShowRecommendations(false);
-    setExcludedExerciseIds(new Set()); // 부위 바뀌면 추천도 새로 — excluded 초기화
+    resetSelection(); // 부위 바뀌면 추천/추가 선택 모두 초기화
   };
 
   const toggleInclude = useCallback((exId: string, included: boolean) => {
@@ -54,6 +68,16 @@ export function StartForm({
       const next = new Set(prev);
       if (included) next.delete(exId);
       else next.add(exId);
+      return next;
+    });
+  }, []);
+
+  // "다른 운동" 목록 토글 — 기본 미포함이므로 included=추가됨 여부
+  const toggleAdded = useCallback((exId: string, included: boolean) => {
+    setAddedExerciseIds((prev) => {
+      const next = new Set(prev);
+      if (included) next.add(exId);
+      else next.delete(exId);
       return next;
     });
   }, []);
@@ -81,11 +105,27 @@ export function StartForm({
     [recommendations, excludedExerciseIds],
   );
 
+  // 추천 상위 3개 밖의 등/기타 운동 (로잉머신 등) — 직접 추가용
+  const otherCandidates = useMemo(() => {
+    if (selectedBP.size === 0) return [];
+    const recIds = new Set(recommendations.map((r) => r.exerciseId));
+    return candidatesForBodyParts(exercises, [...selectedBP])
+      .filter((ex) => !recIds.has(ex.id))
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }, [selectedBP, exercises, recommendations]);
+
+  // 최종 선택 = (추천 − 제외) ∪ (직접 추가)
+  const selectedExerciseIds = useMemo(() => {
+    const out = [...recommendedExerciseIds];
+    for (const id of addedExerciseIds) if (!out.includes(id)) out.push(id);
+    return out;
+  }, [recommendedExerciseIds, addedExerciseIds]);
+
   const handleStart = () => {
     startTransition(async () => {
       const result = await startSession({
         bodyPartIds: [...selectedBP],
-        recommendedExerciseIds,
+        recommendedExerciseIds: selectedExerciseIds,
         templateId: null,
       });
       if (result && result.ok === false) {
@@ -145,7 +185,7 @@ export function StartForm({
                       t.routine_template_body_parts.map((m) => m.body_part_id),
                     ),
                   );
-                  setShowRecommendations(false);
+                  resetSelection();
                 }}
               >
                 {t.name}
@@ -194,6 +234,38 @@ export function StartForm({
               })}
             </ul>
           )}
+
+          {otherCandidates.length > 0 && (
+            <div className="pt-1">
+              {!showOthers ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setShowOthers(true)}
+                >
+                  다른 운동 추가 ({otherCandidates.length})
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    다른 운동 — 직접 추가
+                  </h3>
+                  <ul className="space-y-2">
+                    {otherCandidates.map((ex) => (
+                      <li key={ex.id}>
+                        <ExerciseRecCard
+                          exercise={ex}
+                          included={addedExerciseIds.has(ex.id)}
+                          onToggle={toggleAdded}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
@@ -205,13 +277,13 @@ export function StartForm({
             isPending ||
             selectedBP.size === 0 ||
             !showRecommendations ||
-            recommendedExerciseIds.length === 0
+            selectedExerciseIds.length === 0
           }
           onClick={handleStart}
         >
           {isPending
             ? "시작 중..."
-            : `운동 시작 (${recommendedExerciseIds.length})`}
+            : `운동 시작 (${selectedExerciseIds.length})`}
         </Button>
 
         <Dialog open={saveOpen} onOpenChange={setSaveOpen}>

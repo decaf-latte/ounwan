@@ -16,6 +16,24 @@ export type RecommendInput = {
   perBodyPart?: number;
 };
 
+/**
+ * 선택한 부위 중 하나라도 primary로 매칭되는 모든 운동(추천 상위 N 제한 없음).
+ * "다른 운동 더보기"에서 추천 밖 운동까지 직접 고를 때 사용.
+ * @param includeVariants false면 단측 변형(parent_exercise_id 있는 "(한팔씩)" 등) 제외
+ */
+export function candidatesForBodyParts(
+  exercises: ExerciseWithBodyParts[],
+  bodyPartIds: number[],
+  includeVariants = false,
+): ExerciseWithBodyParts[] {
+  return exercises.filter((ex) => {
+    if (!includeVariants && ex.parent_exercise_id != null) return false;
+    return ex.exercise_body_parts.some(
+      (m) => m.is_primary && bodyPartIds.includes(m.body_part_id),
+    );
+  });
+}
+
 export function recommendExercises({
   bodyPartIds,
   exercises,
