@@ -26,6 +26,7 @@ type Props = {
   todayDayOfMonth?: number;
   monthSessions: MonthSessionEntry[];
   topExercises: TopExercise[];
+  catalog: { id: string; name: string }[];
 };
 
 const MONTH_NAMES = [
@@ -49,6 +50,7 @@ export function HistoryView({
   todayDayOfMonth,
   monthSessions,
   topExercises,
+  catalog,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -233,6 +235,7 @@ export function HistoryView({
       {/* 모달 2개 */}
       <SessionDetailDialog
         sessionId={selectedSessionId}
+        catalog={catalog}
         onClose={() => setSelectedSessionId(null)}
       />
       <ExerciseProgressDialog
