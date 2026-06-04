@@ -24,6 +24,7 @@ import {
   deleteSet,
 } from "@/app/(app)/workout/actions";
 import { ExerciseList } from "@/components/workout/ExerciseList";
+import { CardioCard } from "@/components/workout/CardioCard";
 import type { WorkoutSession } from "@/lib/queries/sessions";
 import type { ExerciseWithBodyParts } from "@/lib/queries/exercises";
 import type {
@@ -31,12 +32,14 @@ import type {
   WorkoutSetInsert,
   LastMainSet,
 } from "@/lib/queries/sets";
+import type { CardioLog } from "@/lib/queries/cardio";
 
 type Props = {
   session: WorkoutSession;
   exercises: ExerciseWithBodyParts[];
   initialSets: WorkoutSet[];
   prefillDefaults: Record<string, LastMainSet>; // exerciseId → 지난번 값
+  initialCardio: CardioLog[];
 };
 
 type DraftSet = {
@@ -118,6 +121,7 @@ export function SessionRunner({
   exercises,
   initialSets,
   prefillDefaults,
+  initialCardio,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
 
@@ -165,6 +169,7 @@ export function SessionRunner({
   const [, startSetDelete] = useTransition();
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [cardioCount, setCardioCount] = useState(initialCardio.length);
 
   // 편집 모드: done 세트 1개 삭제 (optimistic + 실패 시 롤백)
   const handleDeleteSet = (exerciseId: string, setNumber: number) => {
@@ -483,13 +488,22 @@ export function SessionRunner({
           )}
         </div>
 
+        {/* 유산소 — 항상 최하단 */}
+        <CardioCard
+          sessionId={session.id}
+          initialCardio={initialCardio}
+          onCountChange={setCardioCount}
+        />
+
         <Separator />
 
         <Button
           className="w-full lg:max-w-xs"
           size="lg"
           variant="default"
-          disabled={isFinishing || savedSets.length === 0}
+          disabled={
+            isFinishing || (savedSets.length === 0 && cardioCount === 0)
+          }
           onClick={handleFinish}
         >
           {isFinishing ? "종료 중..." : "운동 종료"}

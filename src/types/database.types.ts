@@ -66,6 +66,44 @@ export type Database = {
         }
         Relationships: []
       }
+      cardio_logs: {
+        Row: {
+          created_at: string | null
+          duration_min: number | null
+          id: string
+          incline: number | null
+          machine: string
+          session_id: string
+          speed: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_min?: number | null
+          id?: string
+          incline?: number | null
+          machine: string
+          session_id: string
+          speed?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_min?: number | null
+          id?: string
+          incline?: number | null
+          machine?: string
+          session_id?: string
+          speed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cardio_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "workout_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_body_parts: {
         Row: {
           body_part_id: number

@@ -6,6 +6,7 @@ import {
   fetchSessionSets,
   fetchLastMainSetsByExercise,
 } from "@/lib/queries/sets";
+import { fetchSessionCardio } from "@/lib/queries/cardio";
 import { SessionRunner } from "./SessionRunner";
 
 type PageProps = {
@@ -32,9 +33,10 @@ export default async function SessionPage({
   if (!session) notFound();
   if (session.user_id !== user.id) notFound();
 
-  const [allExercises, existingSets] = await Promise.all([
+  const [allExercises, existingSets, initialCardio] = await Promise.all([
     fetchUserExercises(user.id),
     fetchSessionSets(sessionId),
+    fetchSessionCardio(sessionId),
   ]);
 
   // 운동 목록 복원 우선순위:
@@ -70,6 +72,7 @@ export default async function SessionPage({
         exercises={selectedExercises}
         initialSets={existingSets}
         prefillDefaults={prefillDefaults}
+        initialCardio={initialCardio}
       />
     </main>
   );
