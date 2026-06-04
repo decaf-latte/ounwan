@@ -58,12 +58,12 @@ describe("recommendExercises", () => {
     expect(result.map((r) => r.exerciseId)).toEqual(["a"]);
   });
 
-  it("최근 30일 빈도가 높은 운동을 우선한다", () => {
+  it("저번에 한 운동을 맨 아래로 정렬한다 (최근 안 한 운동 우선)", () => {
     const input: RecommendInput = {
       bodyPartIds: [1],
       exercises: [makeEx("a", 1), makeEx("b", 1), makeEx("c", 1)],
       recentSets: [
-        set("b", 1),
+        set("b", 1), // 가장 최근에 함 → 맨 아래
         set("b", 5),
         set("b", 10),
         set("c", 2),
@@ -71,7 +71,8 @@ describe("recommendExercises", () => {
       perBodyPart: 3,
     };
     const result = recommendExercises(input);
-    expect(result.map((r) => r.exerciseId)).toEqual(["b", "c", "a"]);
+    // a(최근 30일 안 함) → c(2일 전) → b(1일 전, 가장 최근)
+    expect(result.map((r) => r.exerciseId)).toEqual(["a", "c", "b"]);
   });
 
   it("빈도가 같으면 마지막 사용일이 더 오래된 운동을 우선한다", () => {
@@ -100,9 +101,10 @@ describe("recommendExercises", () => {
       perBodyPart: 2,
     };
     const result = recommendExercises(input);
-    expect(result[0].exerciseId).toBe("a");
-    expect(result[0].recentUsageCount).toBe(1);
-    expect(result[1].recentUsageCount).toBe(0);
+    const aRec = result.find((r) => r.exerciseId === "a");
+    const bRec = result.find((r) => r.exerciseId === "b");
+    expect(aRec?.recentUsageCount).toBe(1);
+    expect(bRec?.recentUsageCount).toBe(0);
   });
 
   it("perBodyPart 개수만큼만 부위별로 선택한다", () => {
