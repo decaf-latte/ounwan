@@ -231,6 +231,74 @@ export async function deleteSessionExercise(input: {
   return { ok: true };
 }
 
+/**
+ * 종료된 세션에 세트 1개 추가.
+ * - 세트 추가: 기존 운동에 set_number = 현재 max + 1
+ * - 운동 추가: 세션에 없던 exerciseId면 자연히 set_number = 1 (첫 세트)
+ */
+export async function addSetToSession(input: {
+  sessionId: string;
+  exerciseId: string;
+  weightKg: number;
+  reps: number;
+}): Promise<DeleteResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+
+  if (
+    !Number.isFinite(input.weightKg) ||
+    !Number.isFinite(input.reps) ||
+    input.weightKg < 0 ||
+    input.reps <= 0
+  ) {
+    return { ok: false, error: "무게(0 이상)와 회수(1 이상)를 확인하세요" };
+  }
+
+  // 본인 세션 확인
+  const { data: session } = await supabase
+    .from("workout_sessions")
+    .select("id")
+    .eq("id", input.sessionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!session) return { ok: false, error: "세션을 찾을 수 없습니다" };
+
+  // 현재 max set_number (메인 세트만)
+  const { data: maxRow } = await supabase
+    .from("workout_sets")
+    .select("set_number")
+    .eq("session_id", input.sessionId)
+    .eq("exercise_id", input.exerciseId)
+    .is("parent_set_id", null)
+    .order("set_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextSetNumber = (maxRow?.set_number ?? 0) + 1;
+
+  const { error } = await supabase.from("workout_sets").insert({
+    session_id: input.sessionId,
+    exercise_id: input.exerciseId,
+    set_number: nextSetNumber,
+    weight_kg: input.weightKg,
+    reps: input.reps,
+    side: "both",
+    drop_order: 0,
+    parent_set_id: null,
+  });
+
+  if (error) {
+    console.error("addSetToSession failed", error);
+    return { ok: false, error: "세트 추가 실패" };
+  }
+
+  revalidatePath("/history");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 /** 세트 1개 삭제 (set id 기준). RLS가 본인 세트만 허용. */
 export async function deleteSet(setId: string): Promise<DeleteResult> {
   const supabase = await createClient();

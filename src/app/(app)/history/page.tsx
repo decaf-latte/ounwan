@@ -5,6 +5,7 @@ import {
   fetchSessionsInMonth,
   fetchTopExercises,
 } from "@/lib/queries/sessions";
+import { fetchUserExercises } from "@/lib/queries/exercises";
 import { HistoryView } from "./HistoryView";
 
 type PageProps = {
@@ -34,10 +35,16 @@ export default async function HistoryPage({ searchParams }: PageProps) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [monthSessions, topExercises] = await Promise.all([
+  const [monthSessions, topExercises, allExercises] = await Promise.all([
     fetchSessionsInMonth(user.id, safeYear, safeMonth),
     fetchTopExercises(user.id, 8),
+    fetchUserExercises(user.id),
   ]);
+
+  // 운동 추가 select용 경량 카탈로그 (이름순)
+  const catalog = allExercises
+    .map((e) => ({ id: e.id, name: e.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
   const isCurrentMonth =
     today.getMonth() + 1 === safeMonth && today.getFullYear() === safeYear;
@@ -51,6 +58,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
         todayDayOfMonth={isCurrentMonth ? today.getDate() : undefined}
         monthSessions={monthSessions}
         topExercises={topExercises}
+        catalog={catalog}
       />
     </main>
   );
