@@ -37,9 +37,18 @@ export default async function SessionPage({
     fetchSessionSets(sessionId),
   ]);
 
-  const exerciseIds = exParam
-    ? exParam.split(",").filter(Boolean)
-    : [...new Set(existingSets.map((s) => s.exercise_id))];
+  // 운동 목록 복원 우선순위:
+  // 1) DB의 planned_exercise_ids (세트 0개 운동도 복원 — 새로고침/탭 이동에 강함)
+  // 2) URL ?exercises= (하위호환)
+  // 3) 저장된 세트의 운동들 (구 세션 fallback)
+  const planned = session.planned_exercise_ids ?? [];
+  const setExIds = [...new Set(existingSets.map((s) => s.exercise_id))];
+  const exerciseIds =
+    planned.length > 0
+      ? [...planned, ...setExIds.filter((id) => !planned.includes(id))]
+      : exParam
+        ? exParam.split(",").filter(Boolean)
+        : setExIds;
 
   const selectedExercises = exerciseIds
     .map((id) => allExercises.find((e) => e.id === id))

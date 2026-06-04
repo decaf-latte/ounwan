@@ -22,16 +22,21 @@ export default async function NewWorkoutPage() {
     fetchRecentSets(user.id, 30),
   ]);
 
-  // 진행 중(미종료)이면서 세트가 1개 이상 있는 세션 — 이어하기 배너용.
-  // workout_sets!inner로 빈 세션 제외 (빈 세션은 /workout/[id]에서 notFound).
+  // 진행 중(미종료) 세션 — 이어하기 배너용.
+  // 계획된 운동(planned)이 있거나 세트가 있으면 복원 가능 (둘 다 없는 빈 세션은 제외).
   const { data: activeSession } = await supabase
     .from("workout_sessions")
-    .select("id, workout_sets!inner(id)")
+    .select("id, planned_exercise_ids, workout_sets(id)")
     .eq("user_id", user.id)
     .is("ended_at", null)
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  const canResume =
+    !!activeSession &&
+    ((activeSession.planned_exercise_ids?.length ?? 0) > 0 ||
+      (activeSession.workout_sets?.length ?? 0) > 0);
 
   return (
     <main className="p-5 max-w-md mx-auto">
@@ -40,7 +45,7 @@ export default async function NewWorkoutPage() {
         오늘 뭐 할까요?
       </h1>
 
-      {activeSession && (
+      {canResume && activeSession && (
         <Link
           href={`/workout/${activeSession.id}`}
           className="mt-4 flex items-center justify-between gap-2 rounded-xl border-2 border-accent bg-accent-soft p-4"
