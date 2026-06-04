@@ -1,5 +1,6 @@
 "use client";
 
+import { Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SetRowStatus = "done" | "active" | "upcoming";
@@ -14,6 +15,8 @@ type Props = {
   onRepsChange?: (v: string) => void;
   onCheck?: () => void;
   checkDisabled?: boolean;
+  /** 편집 모드에서 done 세트 삭제 — 있으면 ⊖ 버튼 노출 */
+  onDelete?: () => void;
 };
 
 /**
@@ -31,6 +34,7 @@ export function SetRow({
   onRepsChange,
   onCheck,
   checkDisabled,
+  onDelete,
 }: Props) {
   if (status === "done") {
     return (
@@ -44,6 +48,16 @@ export function SetRow({
         <div className="text-body text-text font-bold">
           {weight}kg × {reps}
         </div>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`${setNumber}세트 삭제`}
+            className="shrink-0 p-1 rounded text-danger hover:bg-danger/10"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+        )}
       </div>
     );
   }
