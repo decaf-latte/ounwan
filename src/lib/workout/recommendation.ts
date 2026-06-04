@@ -84,14 +84,15 @@ export function recommendExercises({
     arr.sort((a, b) => {
       const sa = stats.get(a.ex.id) ?? { recentCount: 0, lastUsedAt: null };
       const sb = stats.get(b.ex.id) ?? { recentCount: 0, lastUsedAt: null };
-      // 1순위 desc
-      if (sa.recentCount !== sb.recentCount) {
-        return sb.recentCount - sa.recentCount;
-      }
-      // 2순위 asc (오래된 것이 위로) — null은 가장 오래된 것으로 간주
+      // 1순위: 마지막 사용일 asc — 저번에 한 운동을 맨 아래로 (안 한 운동/오래된 운동 우선).
+      // null(최근 30일 안에 안 함) = 가장 오래된 것으로 간주해 맨 위.
       const la = sa.lastUsedAt ?? "0";
       const lb = sb.lastUsedAt ?? "0";
       if (la !== lb) return la < lb ? -1 : 1;
+      // 2순위: 최근 빈도 desc (마지막 사용일 동률이면 자주 한 것 우선)
+      if (sa.recentCount !== sb.recentCount) {
+        return sb.recentCount - sa.recentCount;
+      }
       // 3순위 (deterministic)
       const ca = a.ex.created_at ?? "0";
       const cb = b.ex.created_at ?? "0";
