@@ -21,6 +21,7 @@ export async function fetchSessionWithDetailsClient(
       started_at,
       ended_at,
       workout_sets (
+        id,
         set_number,
         weight_kg,
         reps,
