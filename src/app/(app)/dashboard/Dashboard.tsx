@@ -1,17 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import { LogOut, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ProgressRing } from "@/components/ui/progress-ring";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/app/(app)/dashboard/actions";
 import type { TodaySession } from "@/lib/queries/sessions";
 import type { RecentExercise } from "@/lib/queries/sets";
 
-const DEFAULT_EXERCISE_GOAL = 8;
+const EXERCISE_GOAL = 8;
 
 type Props = {
   todaySession: TodaySession | null;
@@ -21,11 +19,26 @@ type Props = {
   dotsByDate: Record<number, DayEntry>;
   recentExercises: RecentExercise[];
   todayDayOfMonth: number;
-  /** "월" / "화" / ... — hydration mismatch 방지 위해 서버 계산 */
+  /** "월" / "화" / ... */
   todayDayLabel: string;
   /** "6월 1일" */
   todayFormatted: string;
 };
+
+function Rule() {
+  return <div className="h-px bg-border -mx-5" />;
+}
+
+function MonoLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="font-mono text-[10px] tracking-[1.4px] uppercase"
+      style={{ color: "var(--text-ghost)" }}
+    >
+      {children}
+    </span>
+  );
+}
 
 export function Dashboard({
   todaySession,
@@ -38,23 +51,45 @@ export function Dashboard({
   todayFormatted,
 }: Props) {
   const completed = todaySession !== null;
+  const exerciseCount = todaySession?.exerciseCount ?? 0;
+  const setCount = todaySession?.mainSetCount ?? 0;
   const subline = completed
-    ? `오늘 ${todaySession.bodyParts.join(", ")} 잘 끝냈어요`
+    ? `오늘 ${todaySession.bodyParts.join("·")} 잘 끝냈어요`
     : "아직 운동 전이에요";
 
   return (
-    <main className="p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-label text-accent-strong uppercase">
-            {todayDayLabel} · {todayFormatted}
+    <main className="p-5 max-w-md lg:max-w-2xl mx-auto pb-32 lg:pb-10">
+
+      {/* ── 헤더 ── */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-mono text-[11px] tracking-[1px] text-accent">
+            {todayFormatted}{" "}
+            <span style={{ color: "var(--text-ghost)" }}>{todayDayLabel}</span>
           </div>
-          <h1 className="text-display font-extrabold mt-1 text-text">
-            {completed ? "오운완 ✓" : "오운완"}
-          </h1>
-          <p className="text-body text-text-muted mt-1">{subline}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <h1 className="text-display font-extrabold tracking-tight leading-none">
+              오운완
+            </h1>
+            {completed && (
+              <span
+                className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: "var(--accent)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              >
+                <Check
+                  className="w-[17px] h-[17px]"
+                  style={{ color: "var(--accent-text)" }}
+                  strokeWidth={2.6}
+                />
+              </span>
+            )}
+          </div>
+          <p className="text-body text-text-muted mt-2">{subline}</p>
         </div>
-        <div className="flex items-center gap-1 lg:hidden">
+        <div className="flex items-center gap-1.5 flex-shrink-0 lg:hidden">
           <ThemeToggle />
           <form action={signOut}>
             <Button
@@ -63,70 +98,131 @@ export function Dashboard({
               variant="ghost"
               aria-label="로그아웃"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
             </Button>
           </form>
         </div>
       </div>
 
-      <section className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* 진행 카드 */}
-        <Card className="p-4 flex items-center gap-4">
-          <ProgressRing
-            value={todaySession?.exerciseCount ?? 0}
-            max={DEFAULT_EXERCISE_GOAL}
-          />
-          <div>
-            <div className="text-stat-l font-extrabold leading-none">
-              {todaySession?.exerciseCount ?? 0}
-              <span className="text-body font-medium text-text-muted">
-                {" "}
-                / {DEFAULT_EXERCISE_GOAL}
-              </span>
-            </div>
-            <div className="text-caption text-text-muted mt-1">
-              운동 · {todaySession?.mainSetCount ?? 0}세트 완료
-            </div>
-          </div>
-        </Card>
+      {/* ── 룰 ── */}
+      <div className="mt-5">
+        <Rule />
+      </div>
 
-        {/* 이번 달 미니 캘린더 */}
-        <Card className="p-4">
-          <div className="text-h3 font-extrabold mb-2.5">이번 달</div>
-          <MiniCalendar
-            year={year}
-            month={month}
-            todayDayOfMonth={todayDayOfMonth}
-            dotsByDate={dotsByDate}
-            size="sm"
-          />
-        </Card>
+      {/* ── 오늘 운동량 ── */}
+      <section className="mt-4">
+        <div className="flex justify-between items-end mb-3">
+          <MonoLabel>오늘 운동량</MonoLabel>
+          <span className="font-mono text-text-muted text-[13px] leading-none">
+            <span
+              className="font-bold leading-none"
+              style={{ color: "var(--accent)", fontSize: 26 }}
+            >
+              {String(exerciseCount).padStart(2, "0")}
+            </span>{" "}
+            / {String(EXERCISE_GOAL).padStart(2, "0")}
+          </span>
+        </div>
 
-        {/* 최근 운동 */}
-        {recentExercises.length > 0 && (
-          <Card className="p-3.5 lg:col-span-2">
-            <div className="text-caption text-text-muted font-semibold">
-              최근 운동
-            </div>
-            {recentExercises.map((ex) => (
-              <div
-                key={ex.exerciseId}
-                className="flex justify-between items-center mt-2"
-              >
-                <div className="text-body font-bold">{ex.exerciseName}</div>
-                <div className="text-caption text-text font-semibold">
-                  {ex.lastWeightKg ?? "-"}kg × {ex.lastReps ?? "-"}
-                </div>
-              </div>
-            ))}
-          </Card>
-        )}
+        {/* 세그먼트 바 */}
+        <div className="flex gap-1">
+          {Array.from({ length: EXERCISE_GOAL }).map((_, i) => (
+            <div
+              key={i}
+              className="flex-1 h-[9px] transition-colors"
+              style={{
+                borderRadius: "var(--radius-sm)",
+                background: i < exerciseCount ? "var(--accent)" : "var(--line2)",
+                boxShadow:
+                  i < exerciseCount
+                    ? "0 0 8px var(--accent-soft)"
+                    : "none",
+              }}
+            />
+          ))}
+        </div>
+
+        <div
+          className="flex gap-4 mt-2.5 font-mono text-[11px] tracking-[0.4px]"
+          style={{ color: "var(--text-ghost)" }}
+        >
+          <span>
+            <span className="text-text font-bold" style={{ fontSize: 13 }}>
+              {setCount}
+            </span>{" "}
+            SETS
+          </span>
+          {completed && todaySession.bodyParts.length > 0 && (
+            <span className="text-text-muted">
+              {todaySession.bodyParts.join(" · ")}
+            </span>
+          )}
+        </div>
       </section>
 
-      {/* CTA */}
-      <div className="fixed bottom-5 left-5 right-5 max-w-md mx-auto lg:static lg:mt-6 lg:max-w-xs lg:mx-0">
+      {/* ── 룰 ── */}
+      <div className="mt-5">
+        <Rule />
+      </div>
+
+      {/* ── 이번 달 캘린더 ── */}
+      <section className="mt-4">
+        <div className="flex justify-between items-center mb-3">
+          <MonoLabel>
+            {year} / {String(month).padStart(2, "0")}
+          </MonoLabel>
+        </div>
+        <MiniCalendar
+          year={year}
+          month={month}
+          todayDayOfMonth={todayDayOfMonth}
+          dotsByDate={dotsByDate}
+          size="sm"
+        />
+      </section>
+
+      {/* ── 최근 운동 ── */}
+      {recentExercises.length > 0 && (
+        <>
+          <div className="mt-5">
+            <Rule />
+          </div>
+          <section className="mt-4">
+            <MonoLabel>최근 운동</MonoLabel>
+            <div className="mt-2">
+              {recentExercises.map((ex, i) => (
+                <div
+                  key={ex.exerciseId}
+                  className="flex justify-between items-center py-2"
+                  style={{
+                    borderTop: i > 0 ? "1px solid var(--line)" : "none",
+                  }}
+                >
+                  <span className="text-body font-semibold text-text truncate mr-3">
+                    {ex.exerciseName}
+                  </span>
+                  <span
+                    className="font-mono text-[13px] flex-shrink-0 whitespace-nowrap"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    <span className="text-text">{ex.lastWeightKg ?? "–"}</span>
+                    kg ×{" "}
+                    <span className="text-text">{ex.lastReps ?? "–"}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* ── CTA ── */}
+      <div className="fixed bottom-5 left-5 right-5 max-w-md mx-auto lg:static lg:mt-8 lg:max-w-xs lg:mx-0">
         <Link href="/workout/new" className="block">
-          <Button size="lg" className="w-full">
+          <Button
+            size="lg"
+            className="w-full h-[52px] text-[15.5px] font-extrabold tracking-tight"
+          >
             + 운동 시작
           </Button>
         </Link>

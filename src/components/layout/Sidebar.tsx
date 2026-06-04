@@ -34,7 +34,7 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "w-52 flex-col p-4 bg-accent-soft border-r border-border",
+        "w-52 flex-col p-4 bg-surface border-r border-border",
         className,
       )}
     >
@@ -50,10 +50,11 @@ export function Sidebar({ className }: { className?: string }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-md text-body transition-colors",
+                  "flex items-center gap-2 px-3 py-2 text-body transition-colors",
+                  "rounded-[var(--radius-md)]",
                   active
-                    ? "bg-accent text-text font-semibold"
-                    : "text-text-muted hover:bg-surface",
+                    ? "text-accent font-semibold bg-accent-soft"
+                    : "text-text-muted hover:bg-accent-soft hover:text-text",
                 )}
               >
                 <Icon className="w-4 h-4" /> {label}

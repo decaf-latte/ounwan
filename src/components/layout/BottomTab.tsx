@@ -31,10 +31,12 @@ export function BottomTab({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "fixed bottom-0 inset-x-0 z-40 bg-surface border-t border-border",
+        "fixed bottom-0 inset-x-0 z-40 border-t border-border",
+        "backdrop-blur-xl",
         "flex justify-around items-stretch h-14 pb-safe",
         className,
       )}
+      style={{ background: "color-mix(in srgb, var(--surface) 80%, transparent)" }}
     >
       {TABS.map(({ href, label, icon: Icon, matchPrefix }) => {
         const active = pathname.startsWith(matchPrefix);
