@@ -11,7 +11,7 @@ import {
   CARDIO_MACHINES,
   type CardioLog,
   type CardioMachine,
-} from "@/lib/queries/cardio";
+} from "@/lib/queries/cardio-types";
 
 type Props = {
   sessionId: string;

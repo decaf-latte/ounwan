@@ -32,7 +32,7 @@ import type {
   WorkoutSetInsert,
   LastMainSet,
 } from "@/lib/queries/sets";
-import type { CardioLog } from "@/lib/queries/cardio";
+import type { CardioLog } from "@/lib/queries/cardio-types";
 
 type Props = {
   session: WorkoutSession;

@@ -1,12 +1,10 @@
-// src/lib/queries/cardio.ts
+// src/lib/queries/cardio.ts (서버 전용 — next/headers 의존)
 import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/types/database.types";
+import type { CardioLog } from "./cardio-types";
 
-export type CardioLog = Tables<"cardio_logs">;
-
-/** 유산소 머신 (UI 3택1). text 컬럼이라 값 자유지만 표준 3종. */
-export const CARDIO_MACHINES = ["천국의계단", "인클라인", "러닝머신"] as const;
-export type CardioMachine = (typeof CARDIO_MACHINES)[number];
+// 타입/상수는 cardio-types.ts에 있음 (클라이언트 안전).
+export type { CardioLog, CardioMachine } from "./cardio-types";
+export { CARDIO_MACHINES } from "./cardio-types";
 
 /** RSC — 세션의 유산소 기록 */
 export async function fetchSessionCardio(
