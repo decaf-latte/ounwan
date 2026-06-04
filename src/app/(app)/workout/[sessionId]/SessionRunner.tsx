@@ -2,9 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useSwipeable } from "react-swipeable";
 import { toast } from "sonner";
-import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   finishSession,
   removeExerciseFromSession,
+  deleteSet,
 } from "@/app/(app)/workout/actions";
 import { ExerciseList } from "@/components/workout/ExerciseList";
 import type { WorkoutSession } from "@/lib/queries/sessions";
@@ -63,6 +62,7 @@ type ExerciseCardWrapperProps = {
   exerciseName: string;
   isActive: boolean;
   isAnyActive: boolean;
+  editMode: boolean;
   isRemoving: boolean;
   onRemove: (exerciseId: string) => void;
   children: React.ReactNode;
@@ -73,65 +73,33 @@ function ExerciseCardWrapper({
   exerciseName,
   isActive,
   isAnyActive,
+  editMode,
   isRemoving,
   onRemove,
   children,
 }: ExerciseCardWrapperProps) {
-  const [revealed, setRevealed] = useState(false);
-
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => setRevealed(true),
-    onSwipedRight: () => setRevealed(false),
-    preventScrollOnSwipe: true,
-    trackTouch: true,
-    trackMouse: false, // 모바일 전용. 데스크탑은 ✕ 백업.
-    delta: 30, // 30px 이상 스와이프해야 발동
-  });
-
   return (
-    <div className="relative overflow-hidden rounded-xl mt-3">
-      {/* ✕ 버튼 — swipe-tracked Card 밖 absolute sibling (z-10). 탭이 swipe로 가로채지지 않음. */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(exerciseId);
-        }}
-        disabled={isRemoving}
-        className={cn(
-          "absolute top-2 right-2 z-10 p-2 rounded-md",
-          "text-text-muted hover:text-text hover:bg-accent-soft",
-        )}
-        aria-label={`${exerciseName} 운동 삭제`}
-      >
-        <X className="w-5 h-5" />
-      </button>
-
-      {/* swipe-left 시 노출되는 뒤쪽 삭제 버튼 */}
-      <button
-        type="button"
-        onClick={() => onRemove(exerciseId)}
-        disabled={isRemoving}
-        className="absolute right-0 top-0 bottom-0 w-20 bg-danger text-surface font-bold text-body flex items-center justify-center"
-        aria-label={`${exerciseName} 운동 삭제`}
-      >
-        삭제
-      </button>
-
-      {/* 카드 본체 — swipe handler 여기에만 부착 */}
-      <Card
-        {...swipeHandlers}
-        className={cn(
-          "p-4 relative transition-transform duration-200 ease-soft",
-          revealed && "-translate-x-20",
-          isActive && "border-2 border-accent",
-          !isActive && isAnyActive && "opacity-65",
-        )}
-        onClick={() => revealed && setRevealed(false)}
-      >
-        {children}
-      </Card>
-    </div>
+    <Card
+      className={cn(
+        "p-4 relative mt-3",
+        // 진행 강조(테두리/흐림)는 평소에만. 편집 중엔 모든 카드 동일하게 보여 삭제 편하게.
+        !editMode && isActive && "border-2 border-accent",
+        !editMode && !isActive && isAnyActive && "opacity-65",
+      )}
+    >
+      {editMode && (
+        <button
+          type="button"
+          onClick={() => onRemove(exerciseId)}
+          disabled={isRemoving}
+          className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-md bg-danger/10 text-danger text-caption font-semibold hover:bg-danger/20 disabled:opacity-50"
+          aria-label={`${exerciseName} 운동 삭제`}
+        >
+          운동 삭제
+        </button>
+      )}
+      {children}
+    </Card>
   );
 }
 
@@ -184,7 +152,29 @@ export function SessionRunner({
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
   const [isFinishing, startFinish] = useTransition();
   const [isRemoving, startRemove] = useTransition();
+  const [, startSetDelete] = useTransition();
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+
+  // 편집 모드: done 세트 1개 삭제 (optimistic + 실패 시 롤백)
+  const handleDeleteSet = (exerciseId: string, setNumber: number) => {
+    const target = savedSets.find(
+      (s) =>
+        s.exercise_id === exerciseId &&
+        s.set_number === setNumber &&
+        s.parent_set_id === null,
+    );
+    if (!target) return;
+    const prev = savedSets;
+    setSavedSets((curr) => curr.filter((s) => s.id !== target.id));
+    startSetDelete(async () => {
+      const result = await deleteSet(target.id);
+      if (!result.ok) {
+        setSavedSets(prev);
+        toast.error(result.error);
+      }
+    });
+  };
 
   const setKey = (exId: string, n: number) => `${exId}:${n}`;
   const isSaved = (exerciseId: string, setNumber: number) =>
@@ -354,10 +344,11 @@ export function SessionRunner({
         exerciseName={ex.name}
         isActive={ex.id === activeExerciseId}
         isAnyActive={activeExerciseId !== null}
+        editMode={editMode}
         isRemoving={isRemoving}
         onRemove={handleRemoveClick}
       >
-        <div className="pr-8">
+        <div className={cn(editMode ? "pr-24" : "pr-2")}>
           <div className="text-h3 font-extrabold text-text">{ex.name}</div>
           {prefill && (prefill.weightKg != null || prefill.reps != null) && (
             <div className="text-caption text-text-muted mt-0.5">
@@ -396,6 +387,11 @@ export function SessionRunner({
                   })
                 }
                 checkDisabled={isPending || !draft.weightKg || !draft.reps}
+                onDelete={
+                  editMode && saved
+                    ? () => handleDeleteSet(ex.id, draft.setNumber)
+                    : undefined
+                }
                 onCheck={() => {
                   const w = parseFloat(draft.weightKg);
                   const r = parseInt(draft.reps, 10);
@@ -435,19 +431,30 @@ export function SessionRunner({
       />
 
       <div className="flex-1 space-y-4 min-w-0">
-        <header>
-          <h1 className="text-h2 font-extrabold text-text">운동 진행 중</h1>
-          <p className="text-caption text-text-muted">
-            {new Date(session.started_at).toLocaleString("ko-KR")}
-          </p>
+        <header className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-h2 font-extrabold text-text">운동 진행 중</h1>
+            <p className="text-caption text-text-muted">
+              {new Date(session.started_at).toLocaleString("ko-KR")}
+            </p>
+          </div>
+          <Button
+            variant={editMode ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setEditMode((v) => !v)}
+          >
+            {editMode ? "완료" : "편집"}
+          </Button>
         </header>
 
         {/* 모바일: 모든 운동 카드 펼침 */}
         <div className="space-y-4 lg:hidden">{exercises.map(cardFor)}</div>
 
-        {/* lg+: active 운동 카드 1개 또는 모든 운동 완료 메시지 */}
+        {/* lg+: 편집 중엔 전체, 평소엔 active 1개 또는 완료 메시지 */}
         <div className="hidden lg:block">
-          {allDone ? (
+          {editMode ? (
+            exercises.map(cardFor)
+          ) : allDone ? (
             <div className="text-center py-12 space-y-2">
               <p className="text-h2 font-extrabold text-accent">
                 모든 운동 완료 🎉
