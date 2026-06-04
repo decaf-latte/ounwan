@@ -8,6 +8,7 @@ type SessionDetailRow = {
   started_at: string;
   ended_at: string | null;
   workout_sets: Array<{
+    id: string;
     set_number: number;
     weight_kg: number | null;
     reps: number | null;
@@ -48,6 +49,7 @@ export function mapSessionDetailRow(data: unknown): SessionDetail {
       exerciseMap.set(ex.id, { id: ex.id, name: ex.name, sets: [] });
     }
     exerciseMap.get(ex.id)!.sets.push({
+      id: s.id,
       set_number: s.set_number,
       weight_kg: s.weight_kg,
       reps: s.reps,

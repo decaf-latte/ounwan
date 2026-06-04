@@ -319,6 +319,7 @@ export type SessionDetail = {
     id: string;
     name: string;
     sets: Array<{
+      id: string;
       set_number: number;
       weight_kg: number | null;
       reps: number | null;
@@ -339,6 +340,7 @@ export async function fetchSessionWithDetails(
       started_at,
       ended_at,
       workout_sets (
+        id,
         set_number,
         weight_kg,
         reps,

@@ -163,3 +163,93 @@ export async function removeExerciseFromSession(input: {
   const exParam = encodeURIComponent(input.remainingExerciseIds.join(","));
   redirect(`/workout/${input.sessionId}?exercises=${exParam}`);
 }
+
+// ── 기록 삭제 (종료된 세션 — /history 세션 상세 모달용) ───────────────
+// redirect 없음. 모달에서 결과 받아 캐시 무효화 + router.refresh.
+
+export type DeleteResult = { ok: true } | { ok: false; error: string };
+
+/** 세션 전체 삭제 — workout_sets는 FK CASCADE로 함께 삭제됨. */
+export async function deleteSession(sessionId: string): Promise<DeleteResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+
+  const { error } = await supabase
+    .from("workout_sessions")
+    .delete()
+    .eq("id", sessionId)
+    .eq("user_id", user.id); // RLS도 막지만 명시 안전장치
+
+  if (error) {
+    console.error("deleteSession failed", error);
+    return { ok: false, error: "세션 삭제 실패" };
+  }
+
+  revalidatePath("/history");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/** 종료된 세션에서 운동 1개 삭제 (해당 운동의 모든 세트). */
+export async function deleteSessionExercise(input: {
+  sessionId: string;
+  exerciseId: string;
+}): Promise<DeleteResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+
+  // 본인 세션인지 확인 (RLS도 막지만 명시)
+  const { data: session, error: sErr } = await supabase
+    .from("workout_sessions")
+    .select("id")
+    .eq("id", input.sessionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (sErr || !session) {
+    return { ok: false, error: "세션을 찾을 수 없습니다" };
+  }
+
+  const { error } = await supabase
+    .from("workout_sets")
+    .delete()
+    .eq("session_id", input.sessionId)
+    .eq("exercise_id", input.exerciseId);
+
+  if (error) {
+    console.error("deleteSessionExercise failed", error);
+    return { ok: false, error: "운동 삭제 실패" };
+  }
+
+  revalidatePath("/history");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/** 세트 1개 삭제 (set id 기준). RLS가 본인 세트만 허용. */
+export async function deleteSet(setId: string): Promise<DeleteResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+
+  const { error } = await supabase
+    .from("workout_sets")
+    .delete()
+    .eq("id", setId);
+
+  if (error) {
+    console.error("deleteSet failed", error);
+    return { ok: false, error: "세트 삭제 실패" };
+  }
+
+  revalidatePath("/history");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
