@@ -30,6 +30,8 @@ export async function startSession(
       user_id: user.id,
       routine_template_id: input.templateId ?? null,
       started_at: new Date().toISOString(),
+      // 계획된 운동 목록을 DB에 저장 → 세트 입력 전이라도 복귀 시 복원
+      planned_exercise_ids: input.recommendedExerciseIds,
     })
     .select("id")
     .single();
@@ -39,8 +41,7 @@ export async function startSession(
     return { ok: false, error: "세션 생성 실패" };
   }
 
-  const exParam = encodeURIComponent(input.recommendedExerciseIds.join(","));
-  redirect(`/workout/${data.id}?exercises=${exParam}`);
+  redirect(`/workout/${data.id}`);
 }
 
 export type SaveTemplateInput = {
@@ -155,13 +156,19 @@ export async function removeExerciseFromSession(input: {
     return { ok: false, error: "운동 삭제 실패" };
   }
 
+  // 계획 목록도 동기화 (세트 0개여도 복원되던 운동이 다시 안 뜨도록)
+  await supabase
+    .from("workout_sessions")
+    .update({ planned_exercise_ids: input.remainingExerciseIds })
+    .eq("id", input.sessionId)
+    .eq("user_id", user.id);
+
   if (input.remainingExerciseIds.length === 0) {
     // 더 이상 운동 없음 → 대시보드로
     redirect("/dashboard");
   }
 
-  const exParam = encodeURIComponent(input.remainingExerciseIds.join(","));
-  redirect(`/workout/${input.sessionId}?exercises=${exParam}`);
+  redirect(`/workout/${input.sessionId}`);
 }
 
 // ── 기록 삭제 (종료된 세션 — /history 세션 상세 모달용) ───────────────

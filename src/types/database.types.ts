@@ -206,6 +206,7 @@ export type Database = {
           ended_at: string | null
           id: string
           overall_notes: string | null
+          planned_exercise_ids: string[]
           routine_template_id: string | null
           started_at: string
           user_id: string
@@ -215,6 +216,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           overall_notes?: string | null
+          planned_exercise_ids?: string[]
           routine_template_id?: string | null
           started_at: string
           user_id: string
@@ -224,6 +226,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           overall_notes?: string | null
+          planned_exercise_ids?: string[]
           routine_template_id?: string | null
           started_at?: string
           user_id?: string
