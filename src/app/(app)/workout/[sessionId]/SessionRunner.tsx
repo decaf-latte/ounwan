@@ -65,6 +65,8 @@ type ExerciseCardWrapperProps = {
   editMode: boolean;
   isRemoving: boolean;
   onRemove: (exerciseId: string) => void;
+  /** 있으면 카드 탭으로 이 운동을 활성화 (비활성 카드에만 전달) */
+  onSelect?: () => void;
   children: React.ReactNode;
 };
 
@@ -76,15 +78,18 @@ function ExerciseCardWrapper({
   editMode,
   isRemoving,
   onRemove,
+  onSelect,
   children,
 }: ExerciseCardWrapperProps) {
   return (
     <Card
+      onClick={onSelect}
       className={cn(
         "p-4 relative mt-3",
         // 진행 강조(테두리/흐림)는 평소에만. 편집 중엔 모든 카드 동일하게 보여 삭제 편하게.
         !editMode && isActive && "border-2 border-accent",
         !editMode && !isActive && isAnyActive && "opacity-65",
+        onSelect && "cursor-pointer hover:opacity-100 hover:border-accent/40",
       )}
     >
       {editMode && (
@@ -97,6 +102,11 @@ function ExerciseCardWrapper({
         >
           운동 삭제
         </button>
+      )}
+      {onSelect && (
+        <span className="absolute top-3 right-3 text-caption text-accent font-semibold">
+          탭하여 선택
+        </span>
       )}
       {children}
     </Card>
@@ -347,6 +357,11 @@ export function SessionRunner({
         editMode={editMode}
         isRemoving={isRemoving}
         onRemove={handleRemoveClick}
+        onSelect={
+          !editMode && ex.id !== activeExerciseId
+            ? () => setUserPickedExId(ex.id)
+            : undefined
+        }
       >
         <div className={cn(editMode ? "pr-24" : "pr-2")}>
           <div className="text-h3 font-extrabold text-text">{ex.name}</div>
