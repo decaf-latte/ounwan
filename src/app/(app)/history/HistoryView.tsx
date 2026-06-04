@@ -1,12 +1,19 @@
 // src/app/(app)/history/HistoryView.tsx
 "use client";
 import { useState, useMemo, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, CalendarDays, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
-import { ProgressLine } from "@/components/charts/ProgressLine";
+
+// recharts 청크는 /history에서만, 클라 마운트 시점에 로드
+const ProgressLine = dynamic(
+  () => import("@/components/charts/ProgressLine").then((m) => m.ProgressLine),
+  { ssr: false, loading: () => <Skeleton className="h-32 w-full" /> },
+);
 import { SessionDetailDialog } from "@/components/workout/SessionDetailDialog";
 import { ExerciseProgressDialog } from "@/components/workout/ExerciseProgressDialog";
 import { useQuery } from "@tanstack/react-query";
@@ -251,7 +258,8 @@ function ExerciseProgressCard({
   const { data } = useQuery({
     queryKey: ["exercise-progression", exercise.exerciseId, 12],
     queryFn: () => fetchExerciseProgressionClient(exercise.exerciseId, 12),
-    staleTime: 5 * 60_000,
+    staleTime: 30 * 60_000,
+    gcTime: 60 * 60_000,
   });
   return (
     <ProgressLine

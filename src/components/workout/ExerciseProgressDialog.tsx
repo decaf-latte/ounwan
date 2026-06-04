@@ -1,5 +1,6 @@
 // src/components/workout/ExerciseProgressDialog.tsx
 "use client";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -8,8 +9,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MultiSeriesChart } from "@/components/charts/MultiSeriesChart";
 import { fetchExerciseProgressionClient } from "@/lib/queries/sessions-client";
+
+// recharts는 무거우므로 모달이 열릴 때만 청크 로드 (dashboard/workout 첫 로드에서 제외)
+const MultiSeriesChart = dynamic(
+  () =>
+    import("@/components/charts/MultiSeriesChart").then(
+      (m) => m.MultiSeriesChart,
+    ),
+  { ssr: false, loading: () => <Skeleton className="h-64" /> },
+);
 
 type Props = {
   exerciseId: string | null;
@@ -26,6 +35,7 @@ export function ExerciseProgressDialog({
     queryKey: ["exercise-progression", exerciseId],
     queryFn: () => fetchExerciseProgressionClient(exerciseId!, 12),
     enabled: !!exerciseId,
+    staleTime: 30 * 60_000,
   });
 
   return (
