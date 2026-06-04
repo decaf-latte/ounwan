@@ -217,7 +217,7 @@ export function Dashboard({
       )}
 
       {/* ── CTA ── */}
-      <div className="fixed bottom-5 left-5 right-5 max-w-md mx-auto lg:static lg:mt-8 lg:max-w-xs lg:mx-0">
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom)+1rem)] left-5 right-5 max-w-md mx-auto lg:static lg:bottom-auto lg:mt-8 lg:max-w-xs lg:mx-0">
         <Link href="/workout/new" className="block">
           <Button
             size="lg"
