@@ -24,6 +24,13 @@ import {
 } from "@/lib/workout/recommendation";
 import { startSession, saveTemplate } from "@/app/(app)/workout/actions";
 import { BodyPartChip } from "@/components/ui/body-part-chip";
+import {
+  BODY_PART_CATEGORY_LABEL,
+  type BodyPartCategory,
+  categoryForSelectedIds,
+  filterByCategory,
+} from "@/lib/workout/body-part-category";
+import { cn } from "@/lib/utils";
 import type { StartFormProps } from "./start-form-types";
 
 export function StartForm({
@@ -32,8 +39,14 @@ export function StartForm({
   templates,
   recentSets,
 }: StartFormProps) {
+  const [category, setCategory] = useState<BodyPartCategory>("upper");
   const [selectedBP, setSelectedBP] = useState<Set<number>>(new Set());
   const [showRecommendations, setShowRecommendations] = useState(false);
+
+  const visibleBodyParts = useMemo(
+    () => filterByCategory(bodyParts, category),
+    [bodyParts, category],
+  );
   const [isPending, startTransition] = useTransition();
   const [saveOpen, setSaveOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
@@ -51,6 +64,13 @@ export function StartForm({
     setExcludedExerciseIds(new Set());
     setAddedExerciseIds(new Set());
     setShowOthers(false);
+  };
+
+  const handleCategoryChange = (next: BodyPartCategory) => {
+    if (next === category) return;
+    setCategory(next);
+    setSelectedBP(new Set());
+    resetSelection();
   };
 
   const toggleBP = (id: number) => {
@@ -156,8 +176,34 @@ export function StartForm({
         <h2 className="text-caption font-semibold text-text-muted mb-2">
           부위 선택
         </h2>
+        <div
+          role="tablist"
+          aria-label="상체 / 하체"
+          className="inline-flex p-1 rounded-full border border-accent-soft bg-surface mb-3"
+        >
+          {(["upper", "lower"] as const).map((cat) => {
+            const active = category === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleCategoryChange(cat)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-body font-semibold transition-colors",
+                  active
+                    ? "bg-text text-surface"
+                    : "text-text-muted hover:text-text",
+                )}
+              >
+                {BODY_PART_CATEGORY_LABEL[cat]}
+              </button>
+            );
+          })}
+        </div>
         <div className="flex flex-wrap gap-2">
-          {bodyParts.map((bp) => (
+          {visibleBodyParts.map((bp) => (
             <BodyPartChip
               key={bp.id}
               label={bp.name_ko}
@@ -180,11 +226,11 @@ export function StartForm({
                 variant="outline"
                 className="cursor-pointer px-3 py-1.5"
                 onClick={() => {
-                  setSelectedBP(
-                    new Set(
-                      t.routine_template_body_parts.map((m) => m.body_part_id),
-                    ),
+                  const ids = t.routine_template_body_parts.map(
+                    (m) => m.body_part_id,
                   );
+                  setCategory(categoryForSelectedIds(bodyParts, ids, category));
+                  setSelectedBP(new Set(ids));
                   resetSelection();
                 }}
               >
