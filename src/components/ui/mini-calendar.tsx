@@ -18,8 +18,8 @@ type Props = {
   dotsByDate: Record<number, DayEntry>;
   /** 날짜별 대표 몸무게 (kg). 셀 아래 배지로 노출. */
   weightByDate?: Record<number, number>;
-  /** 미지정 시 비활성 (대시보드용). 클릭 시 첫 sessionId 전달. */
-  onDateClick?: (sessionId: string) => void;
+  /** 미지정 시 비활성. 클릭 시 (day, 해당 날짜 entry) 전달. entry 없으면 빈 날짜. */
+  onDateClick?: (day: number, entry?: DayEntry) => void;
   size?: "sm" | "md";
 };
 
@@ -93,7 +93,7 @@ export function MiniCalendar({
         const entry = inMonth ? dotsByDate[dayNum] : undefined;
         const weightKg = inMonth ? weightByDate?.[dayNum] : undefined;
         const isToday = inMonth && dayNum === todayDayOfMonth;
-        const clickable = !!entry && !!onDateClick;
+        const clickable = inMonth && !!onDateClick;
         const categories = entry?.categories ?? [];
 
         const catStyle = categoryStyleFor(categories);
@@ -138,10 +138,14 @@ export function MiniCalendar({
             <button
               key={i}
               type="button"
-              onClick={() => onDateClick(entry.sessionIds[0])}
+              onClick={() => onDateClick(dayNum, entry)}
               className={cn(cellCls, !cellStyle && "hover:bg-accent-soft transition-colors")}
               style={cellStyle}
-              aria-label={`${month}월 ${dayNum}일, 세션 ${entry.sessionIds.length}개`}
+              aria-label={
+                entry
+                  ? `${month}월 ${dayNum}일, 세션 ${entry.sessionIds.length}개`
+                  : `${month}월 ${dayNum}일`
+              }
             >
               {cellContent}
             </button>

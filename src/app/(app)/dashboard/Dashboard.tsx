@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LogOut, Check, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { SessionDetailDialog } from "@/components/workout/SessionDetailDialog";
 import { signOut } from "@/app/(app)/dashboard/actions";
 import { WeightFab } from "@/components/weight/WeightEntryDialog";
 import type { TodaySession } from "@/lib/queries/sessions";
@@ -23,6 +26,7 @@ type Props = {
   todayWeights: BodyWeightRow[];
   todayDateIso: string;
   recentExercises: RecentExercise[];
+  catalog: Array<{ id: string; name: string }>;
   todayDayOfMonth: number;
   /** "월" / "화" / ... */
   todayDayLabel: string;
@@ -54,10 +58,24 @@ export function Dashboard({
   todayWeights,
   todayDateIso,
   recentExercises,
+  catalog,
   todayDayOfMonth,
   todayDayLabel,
   todayFormatted,
 }: Props) {
+  const router = useRouter();
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    null,
+  );
+
+  const handleDateClick = (_day: number, entry?: DayEntry) => {
+    if (entry && entry.sessionIds[0]) {
+      setSelectedSessionId(entry.sessionIds[0]);
+    } else {
+      router.push("/workout/new");
+    }
+  };
+
   const completed = todaySession !== null;
   const exerciseCount = todaySession?.exerciseCount ?? 0;
   const setCount = todaySession?.mainSetCount ?? 0;
@@ -193,6 +211,7 @@ export function Dashboard({
           todayDayOfMonth={todayDayOfMonth}
           dotsByDate={dotsByDate}
           weightByDate={weightByDate}
+          onDateClick={handleDateClick}
         />
       </section>
 
@@ -232,6 +251,12 @@ export function Dashboard({
       )}
 
       <WeightFab todayWeights={todayWeights} defaultDate={todayDateIso} />
+
+      <SessionDetailDialog
+        sessionId={selectedSessionId}
+        catalog={catalog}
+        onClose={() => setSelectedSessionId(null)}
+      />
 
       {/* ── CTA ── */}
       <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom)+1rem)] left-5 right-5 max-w-md mx-auto lg:static lg:bottom-auto lg:mt-8 lg:max-w-xs lg:mx-0">
