@@ -193,7 +193,6 @@ export function Dashboard({
           todayDayOfMonth={todayDayOfMonth}
           dotsByDate={dotsByDate}
           weightByDate={weightByDate}
-          size="sm"
         />
       </section>
 

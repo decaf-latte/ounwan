@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database.types";
 import { estimateOneRepMax, calcSetVolume } from "@/lib/workout/one-rep-max";
+import { getCategoryByCode } from "@/lib/workout/body-part-category";
 import { mapSessionDetailRow } from "./session-detail-mapper";
 
 export type WorkoutSession = Tables<"workout_sessions">;
@@ -233,6 +234,8 @@ export type MonthSessionEntry = {
   dayOfMonth: number;
   sessionIds: string[];
   bodyPartColors: string[];
+  /** 상체/하체 카테고리. 한 세션이 둘 다 포함 시 둘 다 들어감. */
+  categories: Array<"upper" | "lower">;
 };
 
 /**
@@ -260,7 +263,7 @@ export async function fetchSessionsInMonth(
         exercises!inner (
           exercise_body_parts (
             is_primary,
-            body_parts ( color )
+            body_parts ( code, color )
           )
         )
       )
@@ -279,7 +282,7 @@ export async function fetchSessionsInMonth(
       exercises: {
         exercise_body_parts: Array<{
           is_primary: boolean | null;
-          body_parts: { color: string | null } | null;
+          body_parts: { code: string | null; color: string | null } | null;
         }>;
       };
     }>;
@@ -289,7 +292,12 @@ export async function fetchSessionsInMonth(
   for (const row of (data ?? []) as unknown as Row[]) {
     const day = new Date(row.started_at).getDate();
     if (!byDay.has(day)) {
-      byDay.set(day, { dayOfMonth: day, sessionIds: [], bodyPartColors: [] });
+      byDay.set(day, {
+        dayOfMonth: day,
+        sessionIds: [],
+        bodyPartColors: [],
+        categories: [],
+      });
     }
     const entry = byDay.get(day)!;
     if (!entry.sessionIds.includes(row.id)) {
@@ -297,9 +305,15 @@ export async function fetchSessionsInMonth(
     }
     for (const ws of row.workout_sets) {
       for (const ebp of ws.exercises.exercise_body_parts) {
-        if (ebp.is_primary === true && ebp.body_parts?.color) {
-          if (!entry.bodyPartColors.includes(ebp.body_parts.color)) {
-            entry.bodyPartColors.push(ebp.body_parts.color);
+        if (ebp.is_primary !== true || !ebp.body_parts) continue;
+        const { code, color } = ebp.body_parts;
+        if (color && !entry.bodyPartColors.includes(color)) {
+          entry.bodyPartColors.push(color);
+        }
+        if (code) {
+          const category = getCategoryByCode(code);
+          if (!entry.categories.includes(category)) {
+            entry.categories.push(category);
           }
         }
       }

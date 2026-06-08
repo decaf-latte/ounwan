@@ -37,7 +37,11 @@ export default async function DashboardPage() {
   const dotsByDate: Record<number, DayEntry> = Object.fromEntries(
     monthSessions.map((e) => [
       e.dayOfMonth,
-      { bodyPartColors: e.bodyPartColors, sessionIds: e.sessionIds },
+      {
+        bodyPartColors: e.bodyPartColors,
+        sessionIds: e.sessionIds,
+        categories: e.categories,
+      },
     ]),
   );
 

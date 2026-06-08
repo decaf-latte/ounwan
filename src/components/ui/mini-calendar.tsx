@@ -1,11 +1,13 @@
 // src/components/ui/mini-calendar.tsx
 "use client";
 import { cn } from "@/lib/utils";
-import { bodyPartStyle } from "@/lib/workout/body-part-color";
 
 export type DayEntry = {
+  /** 운영용으로 유지 — 추후 정리 가능 */
   bodyPartColors: string[];
   sessionIds: string[];
+  /** 상체/하체 카테고리 (둘 다면 둘 다 포함) */
+  categories?: Array<"upper" | "lower">;
 };
 
 type Props = {
@@ -23,6 +25,27 @@ type Props = {
 
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
+const CATEGORY_LABEL = { upper: "상", lower: "하" } as const;
+const CATEGORY_CLASS = {
+  upper:
+    "bg-accent-soft text-accent-strong border border-accent-soft",
+  lower:
+    "bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-text border border-border",
+} as const;
+
+function CategoryPill({ category }: { category: "upper" | "lower" }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center text-[10px] font-bold leading-none rounded-md px-1 py-0.5",
+        CATEGORY_CLASS[category],
+      )}
+    >
+      {CATEGORY_LABEL[category]}
+    </span>
+  );
+}
+
 export function MiniCalendar({
   year,
   month,
@@ -32,12 +55,10 @@ export function MiniCalendar({
   onDateClick,
   size = "md",
 }: Props) {
-  // 첫 날의 요일 (월요일=0 ... 일요일=6)
-  // JS Date: month 0-indexed, getDay()는 일=0...토=6
-  // 월요일 시작으로 보정: (getDay() + 6) % 7
   const firstDayMonOffset = (new Date(year, month - 1, 1).getDay() + 6) % 7;
-  // 해당 월 마지막 일
   const daysInMonth = new Date(year, month, 0).getDate();
+
+  const isSm = size === "sm";
 
   return (
     <div
@@ -45,7 +66,7 @@ export function MiniCalendar({
       aria-label={`${year}년 ${month}월 운동 캘린더`}
       className={cn(
         "grid grid-cols-7 gap-1",
-        size === "sm" ? "text-[10px]" : "text-xs",
+        isSm ? "text-xs" : "text-sm",
       )}
     >
       {DAY_LABELS.map((d) => (
@@ -65,32 +86,33 @@ export function MiniCalendar({
         const weightKg = inMonth ? weightByDate?.[dayNum] : undefined;
         const isToday = inMonth && dayNum === todayDayOfMonth;
         const clickable = !!entry && !!onDateClick;
+        const categories = entry?.categories ?? [];
 
         const cellContent = (
           <>
-            <span>{inMonth ? dayNum : ""}</span>
-            {entry && (
-              <div className="flex justify-center gap-0.5 mt-0.5">
-                {entry.bodyPartColors.slice(0, 4).map((c, j) => (
-                  <span
-                    key={j}
-                    className="w-1 h-1 rounded-full inline-block dark:saturate-90 dark:brightness-95"
-                    style={bodyPartStyle(c)}
-                  />
+            <span className={cn(isSm ? "text-sm" : "text-base", "font-semibold")}>
+              {inMonth ? dayNum : ""}
+            </span>
+            {categories.length > 0 && (
+              <div className="flex justify-center gap-0.5 mt-1">
+                {categories.map((c) => (
+                  <CategoryPill key={c} category={c} />
                 ))}
-                {entry.bodyPartColors.length > 4 && (
-                  <span className="text-[8px] text-text-muted">
-                    +{entry.bodyPartColors.length - 4}
-                  </span>
-                )}
               </div>
             )}
             {weightKg !== undefined && (
-              <div className="mt-0.5 text-[9px] font-mono text-accent leading-none">
+              <div className="mt-1 text-[10px] font-mono text-accent leading-none">
                 {weightKg}kg
               </div>
             )}
           </>
+        );
+
+        const cellCls = cn(
+          "rounded text-center flex flex-col items-center justify-start",
+          isSm ? "min-h-14 p-1.5" : "min-h-16 p-2",
+          isToday && "border-2 border-accent",
+          !inMonth && "text-text-ghost",
         );
 
         if (clickable) {
@@ -99,10 +121,7 @@ export function MiniCalendar({
               key={i}
               type="button"
               onClick={() => onDateClick(entry.sessionIds[0])}
-              className={cn(
-                "text-center rounded p-1 hover:bg-accent-soft transition-colors",
-                isToday && "border-2 border-accent",
-              )}
+              className={cn(cellCls, "hover:bg-accent-soft transition-colors")}
               aria-label={`${month}월 ${dayNum}일, 세션 ${entry.sessionIds.length}개`}
             >
               {cellContent}
@@ -113,11 +132,7 @@ export function MiniCalendar({
           <div
             key={i}
             role="gridcell"
-            className={cn(
-              "text-center rounded p-1",
-              isToday && "border-2 border-accent",
-              !inMonth && "text-text-ghost",
-            )}
+            className={cellCls}
             aria-label={inMonth ? `${month}월 ${dayNum}일` : undefined}
           >
             {cellContent}
