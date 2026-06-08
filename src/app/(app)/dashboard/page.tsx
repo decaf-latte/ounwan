@@ -5,6 +5,7 @@ import {
   fetchSessionsInMonth,
 } from "@/lib/queries/sessions";
 import { fetchRecentExerciseHistory } from "@/lib/queries/sets";
+import { fetchUserExercises } from "@/lib/queries/exercises";
 import {
   fetchWeightsInMonth,
   pickRepresentativeWeight,
@@ -26,13 +27,23 @@ export default async function DashboardPage() {
   const year = today.getFullYear();
   const month = today.getMonth() + 1; // 1-indexed
 
-  const [todaySession, monthSessions, recentExercises, monthWeights] =
-    await Promise.all([
-      fetchTodaySession(user.id),
-      fetchSessionsInMonth(user.id, year, month),
-      fetchRecentExerciseHistory(user.id, 2),
-      fetchWeightsInMonth(user.id, year, month),
-    ]);
+  const [
+    todaySession,
+    monthSessions,
+    recentExercises,
+    monthWeights,
+    allExercises,
+  ] = await Promise.all([
+    fetchTodaySession(user.id),
+    fetchSessionsInMonth(user.id, year, month),
+    fetchRecentExerciseHistory(user.id, 2),
+    fetchWeightsInMonth(user.id, year, month),
+    fetchUserExercises(user.id),
+  ]);
+
+  const catalog = allExercises
+    .map((e) => ({ id: e.id, name: e.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
   const dotsByDate: Record<number, DayEntry> = Object.fromEntries(
     monthSessions.map((e) => [
@@ -78,6 +89,7 @@ export default async function DashboardPage() {
       todayWeights={todayWeights}
       todayDateIso={todayDateIso}
       recentExercises={recentExercises}
+      catalog={catalog}
       todayDayLabel={todayDayLabel}
       todayFormatted={todayFormatted}
     />

@@ -181,7 +181,11 @@ export function HistoryView({
               month={month}
               todayDayOfMonth={todayDayOfMonth}
               dotsByDate={dotsByDate}
-              onDateClick={(sessionId) => setSelectedSessionId(sessionId)}
+              onDateClick={(_day, entry) => {
+                if (entry?.sessionIds[0]) {
+                  setSelectedSessionId(entry.sessionIds[0]);
+                }
+              }}
               size="md"
             />
           )
