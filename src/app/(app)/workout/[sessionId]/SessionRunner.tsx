@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +24,7 @@ import {
   finishSession,
   removeExerciseFromSession,
   deleteSet,
+  deleteSession,
 } from "@/app/(app)/workout/actions";
 import { ExerciseList } from "@/components/workout/ExerciseList";
 import { CardioCard } from "@/components/workout/CardioCard";
@@ -170,6 +173,21 @@ export function SessionRunner({
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [cardioCount, setCardioCount] = useState(initialCardio.length);
+  const [deleteSessionOpen, setDeleteSessionOpen] = useState(false);
+  const [isDeletingSession, startDeleteSession] = useTransition();
+  const router = useRouter();
+
+  const handleDeleteSession = () => {
+    startDeleteSession(async () => {
+      const result = await deleteSession(session.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("세션 삭제됨");
+      router.replace("/workout/new");
+    });
+  };
 
   // 편집 모드: done 세트 1개 삭제 (optimistic + 실패 시 롤백)
   const handleDeleteSet = (exerciseId: string, setNumber: number) => {
@@ -458,13 +476,24 @@ export function SessionRunner({
               {new Date(session.started_at).toLocaleString("ko-KR")}
             </p>
           </div>
-          <Button
-            variant={editMode ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setEditMode((v) => !v)}
-          >
-            {editMode ? "완료" : "편집"}
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={editMode ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setEditMode((v) => !v)}
+            >
+              {editMode ? "완료" : "편집"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="세션 삭제"
+              onClick={() => setDeleteSessionOpen(true)}
+              disabled={isDeletingSession}
+            >
+              <Trash2 className="w-4 h-4 text-text-muted" />
+            </Button>
+          </div>
         </header>
 
         {/* 모바일: 모든 운동 카드 펼침 */}
@@ -509,6 +538,30 @@ export function SessionRunner({
           {isFinishing ? "종료 중..." : "운동 종료"}
         </Button>
       </div>
+
+      <Dialog open={deleteSessionOpen} onOpenChange={setDeleteSessionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>이 세션을 통째로 삭제할까요?</DialogTitle>
+          </DialogHeader>
+          <p className="text-body text-text-muted">
+            저장한 모든 운동·세트·유산소가 함께 지워집니다. 되돌릴 수 없어요.
+          </p>
+          <DialogFooter>
+            <DialogClose
+              disabled={isDeletingSession}
+              render={<Button variant="ghost">취소</Button>}
+            />
+            <Button
+              variant="default"
+              disabled={isDeletingSession}
+              onClick={handleDeleteSession}
+            >
+              {isDeletingSession ? "삭제 중..." : "세션 삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={removeTarget !== null}
