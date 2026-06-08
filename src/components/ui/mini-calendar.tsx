@@ -25,21 +25,32 @@ type Props = {
 
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
-const UPPER_FILL = "rgba(239, 68, 68, 0.22)"; // red
-const LOWER_FILL = "rgba(59, 130, 246, 0.22)"; // blue
+// 네온 톤 — 테두리는 진하고 안쪽은 연하게
+const UPPER_BORDER = "#ff4d7a"; // neon pink-red
+const UPPER_FILL = "rgba(255, 77, 122, 0.12)";
+const LOWER_BORDER = "#4dc4ff"; // neon cyan-blue
+const LOWER_FILL = "rgba(77, 196, 255, 0.12)";
 
-function categoryFillStyle(
+type CategoryStyle = {
+  background?: string;
+  borderColor?: string;
+  /** 둘 다인 경우 — 보더는 그라데이션으로 별도 처리 */
+  borderImage?: string;
+};
+
+function categoryStyleFor(
   categories: ReadonlyArray<"upper" | "lower">,
-): React.CSSProperties | undefined {
+): CategoryStyle | undefined {
   const hasUpper = categories.includes("upper");
   const hasLower = categories.includes("lower");
   if (hasUpper && hasLower) {
     return {
       background: `linear-gradient(135deg, ${UPPER_FILL} 0%, ${UPPER_FILL} 50%, ${LOWER_FILL} 50%, ${LOWER_FILL} 100%)`,
+      borderImage: `linear-gradient(135deg, ${UPPER_BORDER}, ${LOWER_BORDER}) 1`,
     };
   }
-  if (hasUpper) return { background: UPPER_FILL };
-  if (hasLower) return { background: LOWER_FILL };
+  if (hasUpper) return { background: UPPER_FILL, borderColor: UPPER_BORDER };
+  if (hasLower) return { background: LOWER_FILL, borderColor: LOWER_BORDER };
   return undefined;
 }
 
@@ -85,7 +96,7 @@ export function MiniCalendar({
         const clickable = !!entry && !!onDateClick;
         const categories = entry?.categories ?? [];
 
-        const fillStyle = categoryFillStyle(categories);
+        const catStyle = categoryStyleFor(categories);
 
         const cellContent = (
           <>
@@ -100,10 +111,25 @@ export function MiniCalendar({
           </>
         );
 
+        // today가 우선 — accent(초록) 보더로 덮어씀
+        const cellStyle: React.CSSProperties | undefined = isToday
+          ? catStyle
+            ? { background: catStyle.background }
+            : undefined
+          : catStyle
+            ? {
+                background: catStyle.background,
+                borderColor: catStyle.borderColor,
+                borderImage: catStyle.borderImage,
+              }
+            : undefined;
+
+        const hasCatBorder = !isToday && !!catStyle;
         const cellCls = cn(
           "rounded-md text-center flex flex-col items-center justify-center",
           isSm ? "min-h-14 p-1.5" : "min-h-16 p-2",
           isToday && "border-2 border-accent",
+          hasCatBorder && "border-2",
           !inMonth && "text-text-ghost",
         );
 
@@ -113,8 +139,8 @@ export function MiniCalendar({
               key={i}
               type="button"
               onClick={() => onDateClick(entry.sessionIds[0])}
-              className={cn(cellCls, !fillStyle && "hover:bg-accent-soft transition-colors")}
-              style={fillStyle}
+              className={cn(cellCls, !cellStyle && "hover:bg-accent-soft transition-colors")}
+              style={cellStyle}
               aria-label={`${month}월 ${dayNum}일, 세션 ${entry.sessionIds.length}개`}
             >
               {cellContent}
@@ -126,7 +152,7 @@ export function MiniCalendar({
             key={i}
             role="gridcell"
             className={cellCls}
-            style={fillStyle}
+            style={cellStyle}
             aria-label={inMonth ? `${month}월 ${dayNum}일` : undefined}
           >
             {cellContent}
