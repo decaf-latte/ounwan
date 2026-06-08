@@ -14,6 +14,8 @@ type Props = {
   month: number;
   todayDayOfMonth?: number;
   dotsByDate: Record<number, DayEntry>;
+  /** 날짜별 대표 몸무게 (kg). 셀 아래 배지로 노출. */
+  weightByDate?: Record<number, number>;
   /** 미지정 시 비활성 (대시보드용). 클릭 시 첫 sessionId 전달. */
   onDateClick?: (sessionId: string) => void;
   size?: "sm" | "md";
@@ -26,6 +28,7 @@ export function MiniCalendar({
   month,
   todayDayOfMonth,
   dotsByDate,
+  weightByDate,
   onDateClick,
   size = "md",
 }: Props) {
@@ -59,6 +62,7 @@ export function MiniCalendar({
         const dayNum = i - firstDayMonOffset + 1;
         const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
         const entry = inMonth ? dotsByDate[dayNum] : undefined;
+        const weightKg = inMonth ? weightByDate?.[dayNum] : undefined;
         const isToday = inMonth && dayNum === todayDayOfMonth;
         const clickable = !!entry && !!onDateClick;
 
@@ -79,6 +83,11 @@ export function MiniCalendar({
                     +{entry.bodyPartColors.length - 4}
                   </span>
                 )}
+              </div>
+            )}
+            {weightKg !== undefined && (
+              <div className="mt-0.5 text-[9px] font-mono text-accent leading-none">
+                {weightKg}kg
               </div>
             )}
           </>

@@ -66,6 +66,33 @@ export type Database = {
         }
         Relationships: []
       }
+      body_weights: {
+        Row: {
+          id: string
+          log_date: string
+          recorded_at: string
+          slot: string
+          user_id: string
+          weight_kg: number
+        }
+        Insert: {
+          id?: string
+          log_date: string
+          recorded_at?: string
+          slot: string
+          user_id: string
+          weight_kg: number
+        }
+        Update: {
+          id?: string
+          log_date?: string
+          recorded_at?: string
+          slot?: string
+          user_id?: string
+          weight_kg?: number
+        }
+        Relationships: []
+      }
       cardio_logs: {
         Row: {
           created_at: string | null
