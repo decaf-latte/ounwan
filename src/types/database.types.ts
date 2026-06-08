@@ -69,27 +69,27 @@ export type Database = {
       body_weights: {
         Row: {
           id: string
-          user_id: string
           log_date: string
-          slot: string
-          weight_kg: number
           recorded_at: string
+          slot: string
+          user_id: string
+          weight_kg: number
         }
         Insert: {
           id?: string
-          user_id: string
           log_date: string
-          slot: string
-          weight_kg: number
           recorded_at?: string
+          slot: string
+          user_id: string
+          weight_kg: number
         }
         Update: {
           id?: string
-          user_id?: string
           log_date?: string
-          slot?: string
-          weight_kg?: number
           recorded_at?: string
+          slot?: string
+          user_id?: string
+          weight_kg?: number
         }
         Relationships: []
       }
