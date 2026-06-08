@@ -25,25 +25,22 @@ type Props = {
 
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
-const CATEGORY_LABEL = { upper: "상", lower: "하" } as const;
-const CATEGORY_CLASS = {
-  upper:
-    "bg-accent-soft text-accent-strong border border-accent-soft",
-  lower:
-    "bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-text border border-border",
-} as const;
+const UPPER_FILL = "rgba(239, 68, 68, 0.22)"; // red
+const LOWER_FILL = "rgba(59, 130, 246, 0.22)"; // blue
 
-function CategoryPill({ category }: { category: "upper" | "lower" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center justify-center text-[10px] font-bold leading-none rounded-md px-1 py-0.5",
-        CATEGORY_CLASS[category],
-      )}
-    >
-      {CATEGORY_LABEL[category]}
-    </span>
-  );
+function categoryFillStyle(
+  categories: ReadonlyArray<"upper" | "lower">,
+): React.CSSProperties | undefined {
+  const hasUpper = categories.includes("upper");
+  const hasLower = categories.includes("lower");
+  if (hasUpper && hasLower) {
+    return {
+      background: `linear-gradient(135deg, ${UPPER_FILL} 0%, ${UPPER_FILL} 50%, ${LOWER_FILL} 50%, ${LOWER_FILL} 100%)`,
+    };
+  }
+  if (hasUpper) return { background: UPPER_FILL };
+  if (hasLower) return { background: LOWER_FILL };
+  return undefined;
 }
 
 export function MiniCalendar({
@@ -88,18 +85,13 @@ export function MiniCalendar({
         const clickable = !!entry && !!onDateClick;
         const categories = entry?.categories ?? [];
 
+        const fillStyle = categoryFillStyle(categories);
+
         const cellContent = (
           <>
             <span className={cn(isSm ? "text-sm" : "text-base", "font-semibold")}>
               {inMonth ? dayNum : ""}
             </span>
-            {categories.length > 0 && (
-              <div className="flex justify-center gap-0.5 mt-1">
-                {categories.map((c) => (
-                  <CategoryPill key={c} category={c} />
-                ))}
-              </div>
-            )}
             {weightKg !== undefined && (
               <div className="mt-1 text-[10px] font-mono text-accent leading-none">
                 {weightKg}kg
@@ -109,7 +101,7 @@ export function MiniCalendar({
         );
 
         const cellCls = cn(
-          "rounded text-center flex flex-col items-center justify-start",
+          "rounded-md text-center flex flex-col items-center justify-center",
           isSm ? "min-h-14 p-1.5" : "min-h-16 p-2",
           isToday && "border-2 border-accent",
           !inMonth && "text-text-ghost",
@@ -121,7 +113,8 @@ export function MiniCalendar({
               key={i}
               type="button"
               onClick={() => onDateClick(entry.sessionIds[0])}
-              className={cn(cellCls, "hover:bg-accent-soft transition-colors")}
+              className={cn(cellCls, !fillStyle && "hover:bg-accent-soft transition-colors")}
+              style={fillStyle}
               aria-label={`${month}월 ${dayNum}일, 세션 ${entry.sessionIds.length}개`}
             >
               {cellContent}
@@ -133,6 +126,7 @@ export function MiniCalendar({
             key={i}
             role="gridcell"
             className={cellCls}
+            style={fillStyle}
             aria-label={inMonth ? `${month}월 ${dayNum}일` : undefined}
           >
             {cellContent}
