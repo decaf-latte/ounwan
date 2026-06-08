@@ -5,6 +5,11 @@ import {
   fetchSessionsInMonth,
 } from "@/lib/queries/sessions";
 import { fetchRecentExerciseHistory } from "@/lib/queries/sets";
+import {
+  fetchWeightsInMonth,
+  pickRepresentativeWeight,
+  type BodyWeightRow,
+} from "@/lib/queries/body-weights";
 import { Dashboard } from "./Dashboard";
 import type { DayEntry } from "@/components/ui/mini-calendar";
 
@@ -21,11 +26,13 @@ export default async function DashboardPage() {
   const year = today.getFullYear();
   const month = today.getMonth() + 1; // 1-indexed
 
-  const [todaySession, monthSessions, recentExercises] = await Promise.all([
-    fetchTodaySession(user.id),
-    fetchSessionsInMonth(user.id, year, month),
-    fetchRecentExerciseHistory(user.id, 2),
-  ]);
+  const [todaySession, monthSessions, recentExercises, monthWeights] =
+    await Promise.all([
+      fetchTodaySession(user.id),
+      fetchSessionsInMonth(user.id, year, month),
+      fetchRecentExerciseHistory(user.id, 2),
+      fetchWeightsInMonth(user.id, year, month),
+    ]);
 
   const dotsByDate: Record<number, DayEntry> = Object.fromEntries(
     monthSessions.map((e) => [
@@ -33,6 +40,24 @@ export default async function DashboardPage() {
       { bodyPartColors: e.bodyPartColors, sessionIds: e.sessionIds },
     ]),
   );
+
+  const weightsByDay = new Map<number, BodyWeightRow[]>();
+  for (const w of monthWeights) {
+    const day = Number(w.log_date.slice(8, 10));
+    const list = weightsByDay.get(day) ?? [];
+    list.push(w);
+    weightsByDay.set(day, list);
+  }
+  const weightByDate: Record<number, number> = {};
+  for (const [day, rows] of weightsByDay) {
+    const rep = pickRepresentativeWeight(rows);
+    if (rep !== null) weightByDate[day] = rep;
+  }
+
+  const todayDateIso = `${year}-${String(month).padStart(2, "0")}-${String(
+    today.getDate(),
+  ).padStart(2, "0")}`;
+  const todayWeights = monthWeights.filter((w) => w.log_date === todayDateIso);
 
   const todayDayIdx = (today.getDay() + 6) % 7; // 월=0...일=6
   const todayDayLabel = DAY_LABELS[todayDayIdx];
@@ -45,6 +70,9 @@ export default async function DashboardPage() {
       month={month}
       todayDayOfMonth={today.getDate()}
       dotsByDate={dotsByDate}
+      weightByDate={weightByDate}
+      todayWeights={todayWeights}
+      todayDateIso={todayDateIso}
       recentExercises={recentExercises}
       todayDayLabel={todayDayLabel}
       todayFormatted={todayFormatted}

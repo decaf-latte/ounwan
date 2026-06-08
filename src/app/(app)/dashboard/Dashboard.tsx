@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Check } from "lucide-react";
+import { LogOut, Check, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { signOut } from "@/app/(app)/dashboard/actions";
+import { WeightFab } from "@/components/weight/WeightEntryDialog";
 import type { TodaySession } from "@/lib/queries/sessions";
 import type { RecentExercise } from "@/lib/queries/sets";
+import type { BodyWeightRow } from "@/lib/queries/body-weights";
 
 const EXERCISE_GOAL = 8;
 
@@ -17,6 +19,9 @@ type Props = {
   /** 1-indexed */
   month: number;
   dotsByDate: Record<number, DayEntry>;
+  weightByDate: Record<number, number>;
+  todayWeights: BodyWeightRow[];
+  todayDateIso: string;
   recentExercises: RecentExercise[];
   todayDayOfMonth: number;
   /** "월" / "화" / ... */
@@ -45,6 +50,9 @@ export function Dashboard({
   year,
   month,
   dotsByDate,
+  weightByDate,
+  todayWeights,
+  todayDateIso,
   recentExercises,
   todayDayOfMonth,
   todayDayLabel,
@@ -171,12 +179,20 @@ export function Dashboard({
           <MonoLabel>
             {year} / {String(month).padStart(2, "0")}
           </MonoLabel>
+          <Link
+            href="/weight"
+            className="inline-flex items-center gap-1 text-caption text-text-muted hover:text-text"
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>몸무게 추이</span>
+          </Link>
         </div>
         <MiniCalendar
           year={year}
           month={month}
           todayDayOfMonth={todayDayOfMonth}
           dotsByDate={dotsByDate}
+          weightByDate={weightByDate}
           size="sm"
         />
       </section>
@@ -215,6 +231,8 @@ export function Dashboard({
           </section>
         </>
       )}
+
+      <WeightFab todayWeights={todayWeights} defaultDate={todayDateIso} />
 
       {/* ── CTA ── */}
       <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom)+1rem)] left-5 right-5 max-w-md mx-auto lg:static lg:bottom-auto lg:mt-8 lg:max-w-xs lg:mx-0">
