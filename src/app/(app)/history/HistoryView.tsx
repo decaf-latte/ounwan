@@ -69,7 +69,11 @@ export function HistoryView({
       Object.fromEntries(
         monthSessions.map((e) => [
           e.dayOfMonth,
-          { bodyPartColors: e.bodyPartColors, sessionIds: e.sessionIds },
+          {
+            bodyPartColors: e.bodyPartColors,
+            sessionIds: e.sessionIds,
+            categories: e.categories,
+          },
         ]),
       ),
     [monthSessions],
