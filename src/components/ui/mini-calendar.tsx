@@ -104,27 +104,27 @@ export function MiniCalendar({
               {inMonth ? dayNum : ""}
             </span>
             {(weights?.morning !== undefined || weights?.evening !== undefined) && (
-              <div className="mt-1 flex flex-col items-center gap-0.5">
+              <div className="mt-1 flex flex-col items-center gap-[3px]">
                 {weights?.morning !== undefined && (
                   <span
-                    className="text-[9px] font-mono leading-none px-1 py-px rounded"
+                    className="text-[9px] font-mono leading-tight px-1.5 py-[2px] rounded-md tabular-nums"
                     style={{
                       background: "rgba(77, 196, 255, 0.18)",
                       color: "#4dc4ff",
                     }}
                   >
-                    {weights.morning}kg
+                    {weights.morning.toFixed(1)}
                   </span>
                 )}
                 {weights?.evening !== undefined && (
                   <span
-                    className="text-[9px] font-mono leading-none px-1 py-px rounded"
+                    className="text-[9px] font-mono leading-tight px-1.5 py-[2px] rounded-md tabular-nums"
                     style={{
                       background: "rgba(255, 77, 122, 0.18)",
                       color: "#ff4d7a",
                     }}
                   >
-                    {weights.evening}kg
+                    {weights.evening.toFixed(1)}
                   </span>
                 )}
               </div>
