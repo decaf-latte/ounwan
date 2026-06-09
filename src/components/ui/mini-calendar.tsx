@@ -16,8 +16,8 @@ type Props = {
   month: number;
   todayDayOfMonth?: number;
   dotsByDate: Record<number, DayEntry>;
-  /** 날짜별 대표 몸무게 (kg). 셀 아래 배지로 노출. */
-  weightByDate?: Record<number, number>;
+  /** 날짜별 몸무게 — 아침/저녁 각각 셀 아래에 배지로 노출. */
+  weightByDate?: Record<number, { morning?: number; evening?: number }>;
   /** 미지정 시 비활성. 클릭 시 (day, 해당 날짜 entry) 전달. entry 없으면 빈 날짜. */
   onDateClick?: (day: number, entry?: DayEntry) => void;
   size?: "sm" | "md";
@@ -91,7 +91,7 @@ export function MiniCalendar({
         const dayNum = i - firstDayMonOffset + 1;
         const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
         const entry = inMonth ? dotsByDate[dayNum] : undefined;
-        const weightKg = inMonth ? weightByDate?.[dayNum] : undefined;
+        const weights = inMonth ? weightByDate?.[dayNum] : undefined;
         const isToday = inMonth && dayNum === todayDayOfMonth;
         const clickable = inMonth && !!onDateClick;
         const categories = entry?.categories ?? [];
@@ -103,9 +103,30 @@ export function MiniCalendar({
             <span className={cn(isSm ? "text-sm" : "text-base", "font-semibold")}>
               {inMonth ? dayNum : ""}
             </span>
-            {weightKg !== undefined && (
-              <div className="mt-1 text-[10px] font-mono text-accent leading-none">
-                {weightKg}kg
+            {(weights?.morning !== undefined || weights?.evening !== undefined) && (
+              <div className="mt-1 flex flex-col items-center gap-0.5">
+                {weights?.morning !== undefined && (
+                  <span
+                    className="text-[9px] font-mono leading-none px-1 py-px rounded"
+                    style={{
+                      background: "rgba(77, 196, 255, 0.18)",
+                      color: "#4dc4ff",
+                    }}
+                  >
+                    {weights.morning}kg
+                  </span>
+                )}
+                {weights?.evening !== undefined && (
+                  <span
+                    className="text-[9px] font-mono leading-none px-1 py-px rounded"
+                    style={{
+                      background: "rgba(255, 77, 122, 0.18)",
+                      color: "#ff4d7a",
+                    }}
+                  >
+                    {weights.evening}kg
+                  </span>
+                )}
               </div>
             )}
           </>

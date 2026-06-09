@@ -6,11 +6,7 @@ import {
 } from "@/lib/queries/sessions";
 import { fetchRecentExerciseHistory } from "@/lib/queries/sets";
 import { fetchUserExercises } from "@/lib/queries/exercises";
-import {
-  fetchWeightsInMonth,
-  pickRepresentativeWeight,
-  type BodyWeightRow,
-} from "@/lib/queries/body-weights";
+import { fetchWeightsInMonth } from "@/lib/queries/body-weights";
 import { Dashboard } from "./Dashboard";
 import type { DayEntry } from "@/components/ui/mini-calendar";
 
@@ -56,17 +52,15 @@ export default async function DashboardPage() {
     ]),
   );
 
-  const weightsByDay = new Map<number, BodyWeightRow[]>();
+  const weightByDate: Record<
+    number,
+    { morning?: number; evening?: number }
+  > = {};
   for (const w of monthWeights) {
     const day = Number(w.log_date.slice(8, 10));
-    const list = weightsByDay.get(day) ?? [];
-    list.push(w);
-    weightsByDay.set(day, list);
-  }
-  const weightByDate: Record<number, number> = {};
-  for (const [day, rows] of weightsByDay) {
-    const rep = pickRepresentativeWeight(rows);
-    if (rep !== null) weightByDate[day] = rep;
+    if (!weightByDate[day]) weightByDate[day] = {};
+    if (w.slot === "morning") weightByDate[day].morning = w.weight_kg;
+    else if (w.slot === "evening") weightByDate[day].evening = w.weight_kg;
   }
 
   const todayDateIso = `${year}-${String(month).padStart(2, "0")}-${String(
