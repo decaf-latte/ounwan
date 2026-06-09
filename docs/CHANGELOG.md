@@ -8,6 +8,14 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ## [Unreleased]
 
+## 2026-06-09
+
+### Added
+- 캘린더 셀에 아침/저녁 몸무게 배지 동시 노출 — 아침은 시안 배지, 저녁은 빨강 네온 배지 (`#31`)
+
+### Changed
+- `weightByDate` prop을 단일 값 → `{ morning?, evening? }` 형태로 분리
+
 ## 2026-06-08
 
 ### Added

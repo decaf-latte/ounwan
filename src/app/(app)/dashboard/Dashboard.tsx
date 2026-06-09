@@ -22,7 +22,7 @@ type Props = {
   /** 1-indexed */
   month: number;
   dotsByDate: Record<number, DayEntry>;
-  weightByDate: Record<number, number>;
+  weightByDate: Record<number, { morning?: number; evening?: number }>;
   todayWeights: BodyWeightRow[];
   todayDateIso: string;
   recentExercises: RecentExercise[];
