@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { seoulTodayParts } from "@/lib/seoul-date";
 
 export type WeightSlot = "morning" | "evening";
 
@@ -39,9 +40,8 @@ export async function fetchRecentWeights(
   userId: string,
   days: number,
 ): Promise<BodyWeightRow[]> {
-  const today = new Date();
-  const since = new Date(today);
-  since.setDate(today.getDate() - (days - 1));
+  const { year, month, day } = seoulTodayParts();
+  const since = new Date(Date.UTC(year, month - 1, day - (days - 1)));
   const sinceStr = since.toISOString().slice(0, 10);
 
   const supabase = await createClient();

@@ -6,6 +6,7 @@ import {
 } from "@/lib/queries/sessions";
 import { fetchRecentExerciseHistory } from "@/lib/queries/sets";
 import { fetchUserExercises } from "@/lib/queries/exercises";
+import { seoulTodayParts, seoulTodayIso } from "@/lib/seoul-date";
 import { fetchWeightsInMonth } from "@/lib/queries/body-weights";
 import { Dashboard } from "./Dashboard";
 import type { DayEntry } from "@/components/ui/mini-calendar";
@@ -19,9 +20,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1; // 1-indexed
+  const { year, month, day: todayDay, dayOfWeek } = seoulTodayParts();
 
   const [
     todaySession,
@@ -63,21 +62,18 @@ export default async function DashboardPage() {
     else if (w.slot === "evening") weightByDate[day].evening = w.weight_kg;
   }
 
-  const todayDateIso = `${year}-${String(month).padStart(2, "0")}-${String(
-    today.getDate(),
-  ).padStart(2, "0")}`;
+  const todayDateIso = seoulTodayIso();
   const todayWeights = monthWeights.filter((w) => w.log_date === todayDateIso);
 
-  const todayDayIdx = (today.getDay() + 6) % 7; // 월=0...일=6
-  const todayDayLabel = DAY_LABELS[todayDayIdx];
-  const todayFormatted = `${today.getMonth() + 1}월 ${today.getDate()}일`;
+  const todayDayLabel = DAY_LABELS[dayOfWeek];
+  const todayFormatted = `${month}월 ${todayDay}일`;
 
   return (
     <Dashboard
       todaySession={todaySession}
       year={year}
       month={month}
-      todayDayOfMonth={today.getDate()}
+      todayDayOfMonth={todayDay}
       dotsByDate={dotsByDate}
       weightByDate={weightByDate}
       todayWeights={todayWeights}
