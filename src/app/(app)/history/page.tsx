@@ -6,6 +6,7 @@ import {
   fetchTopExercises,
 } from "@/lib/queries/sessions";
 import { fetchUserExercises } from "@/lib/queries/exercises";
+import { seoulTodayParts } from "@/lib/seoul-date";
 import { HistoryView } from "./HistoryView";
 
 type PageProps = {
@@ -14,20 +15,24 @@ type PageProps = {
 
 export default async function HistoryPage({ searchParams }: PageProps) {
   const { y, m } = await searchParams;
-  const today = new Date();
+  const {
+    year: todayYear,
+    month: todayMonth,
+    day: todayDay,
+  } = seoulTodayParts();
 
-  const yearInput = y ? Number(y) : today.getFullYear();
-  const monthInput = m !== undefined ? Number(m) : today.getMonth() + 1;
+  const yearInput = y ? Number(y) : todayYear;
+  const monthInput = m !== undefined ? Number(m) : todayMonth;
 
   // 범위 검증 — 잘못된 값은 오늘 달로 fallback
   const safeYear =
     Number.isFinite(yearInput) && yearInput >= 2000 && yearInput <= 2100
       ? yearInput
-      : today.getFullYear();
+      : todayYear;
   const safeMonth =
     Number.isFinite(monthInput) && monthInput >= 1 && monthInput <= 12
       ? monthInput
-      : today.getMonth() + 1;
+      : todayMonth;
 
   const supabase = await createClient();
   const {
@@ -46,8 +51,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
     .map((e) => ({ id: e.id, name: e.name }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
-  const isCurrentMonth =
-    today.getMonth() + 1 === safeMonth && today.getFullYear() === safeYear;
+  const isCurrentMonth = todayMonth === safeMonth && todayYear === safeYear;
 
   return (
     <main className="p-5 max-w-md lg:max-w-5xl mx-auto pb-32 lg:pb-5">
@@ -55,7 +59,7 @@ export default async function HistoryPage({ searchParams }: PageProps) {
       <HistoryView
         year={safeYear}
         month={safeMonth}
-        todayDayOfMonth={isCurrentMonth ? today.getDate() : undefined}
+        todayDayOfMonth={isCurrentMonth ? todayDay : undefined}
         monthSessions={monthSessions}
         topExercises={topExercises}
         catalog={catalog}

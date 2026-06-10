@@ -15,6 +15,7 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ### Fixed
 - 좁은 화면에서 몸무게 배지가 셀을 꽉 채워 찌그러져 보이던 문제 — `kg` 접미사 제거, 소수 1자리 고정, 패딩/모서리 보정 (`#32`)
+- 서버 시간이 UTC라 한국 새벽~오전(00:00~09:00 KST)에 "오늘"이 어제로 잡히던 문제 — Asia/Seoul 기준 헬퍼(`src/lib/seoul-date.ts`)로 dashboard/page, history/page, sessions 쿼리 3곳, body-weights 쿼리 모두 교체 (`#33`)
 
 ### Changed
 - `weightByDate` prop을 단일 값 → `{ morning?, evening? }` 형태로 분리

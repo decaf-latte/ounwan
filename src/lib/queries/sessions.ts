@@ -3,6 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database.types";
 import { estimateOneRepMax, calcSetVolume } from "@/lib/workout/one-rep-max";
 import { getCategoryByCode } from "@/lib/workout/body-part-category";
+import {
+  seoulTodayParts,
+  seoulMidnightUtcIso,
+  seoulDayOfMonth,
+  seoulDayOfWeek,
+} from "@/lib/seoul-date";
 import { mapSessionDetailRow } from "./session-detail-mapper";
 
 export type WorkoutSession = Tables<"workout_sessions">;
@@ -41,17 +47,9 @@ export async function fetchTodaySession(
 ): Promise<TodaySession | null> {
   const supabase = await createClient();
 
-  const now = new Date();
-  const todayStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).toISOString();
-  const tomorrowStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() + 1,
-  ).toISOString();
+  const { year, month, day } = seoulTodayParts();
+  const todayStart = seoulMidnightUtcIso(year, month, day);
+  const tomorrowStart = seoulMidnightUtcIso(year, month, day + 1);
 
   const { data: session, error: sessErr } = await supabase
     .from("workout_sessions")
@@ -105,28 +103,22 @@ export async function fetchWeeklySessionDates(
 ): Promise<Set<number>> {
   const supabase = await createClient();
 
-  const now = new Date();
-  // 월요일 시작 (한국 기본). JS getDay(): 0=일 6=토 → 월=1
-  const dayOfWeek = (now.getDay() + 6) % 7; // 월=0
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dayOfWeek);
-  monday.setHours(0, 0, 0, 0);
-  const nextMonday = new Date(monday);
-  nextMonday.setDate(monday.getDate() + 7);
+  const { year, month, day, dayOfWeek } = seoulTodayParts();
+  const mondayIso = seoulMidnightUtcIso(year, month, day - dayOfWeek);
+  const nextMondayIso = seoulMidnightUtcIso(year, month, day - dayOfWeek + 7);
 
   const { data, error } = await supabase
     .from("workout_sessions")
     .select("started_at")
     .eq("user_id", userId)
-    .gte("started_at", monday.toISOString())
-    .lt("started_at", nextMonday.toISOString());
+    .gte("started_at", mondayIso)
+    .lt("started_at", nextMondayIso);
 
   if (error) throw error;
 
   const set = new Set<number>();
   for (const row of data ?? []) {
-    const d = new Date(row.started_at);
-    set.add((d.getDay() + 6) % 7);
+    set.add(seoulDayOfWeek(row.started_at));
   }
   return set;
 }
@@ -250,8 +242,8 @@ export async function fetchSessionsInMonth(
   month: number,
 ): Promise<MonthSessionEntry[]> {
   const supabase = await createClient();
-  const start = new Date(year, month - 1, 1).toISOString();
-  const end = new Date(year, month, 1).toISOString();
+  const start = seoulMidnightUtcIso(year, month, 1);
+  const end = seoulMidnightUtcIso(year, month + 1, 1);
 
   const { data, error } = await supabase
     .from("workout_sessions")
@@ -290,7 +282,7 @@ export async function fetchSessionsInMonth(
 
   const byDay = new Map<number, MonthSessionEntry>();
   for (const row of (data ?? []) as unknown as Row[]) {
-    const day = new Date(row.started_at).getDate();
+    const day = seoulDayOfMonth(row.started_at);
     if (!byDay.has(day)) {
       byDay.set(day, {
         dayOfMonth: day,
