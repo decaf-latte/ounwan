@@ -13,14 +13,35 @@ import type { DayEntry } from "@/components/ui/mini-calendar";
 
 const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
-export default async function DashboardPage() {
+type PageProps = {
+  searchParams: Promise<{ vy?: string; vm?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: PageProps) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { year, month, day: todayDay, dayOfWeek } = seoulTodayParts();
+  const { vy, vm } = await searchParams;
+  const {
+    year: todayYear,
+    month: todayMonth,
+    day: todayDay,
+    dayOfWeek,
+  } = seoulTodayParts();
+
+  // 캘린더 표시용 (view) 월. 파라미터 없으면 오늘 달.
+  const vyNum = vy ? Number(vy) : todayYear;
+  const vmNum = vm ? Number(vm) : todayMonth;
+  const viewYear =
+    Number.isFinite(vyNum) && vyNum >= 2000 && vyNum <= 2100
+      ? vyNum
+      : todayYear;
+  const viewMonth =
+    Number.isFinite(vmNum) && vmNum >= 1 && vmNum <= 12 ? vmNum : todayMonth;
+  const isCurrentMonth = viewYear === todayYear && viewMonth === todayMonth;
 
   const [
     todaySession,
@@ -30,9 +51,9 @@ export default async function DashboardPage() {
     allExercises,
   ] = await Promise.all([
     fetchTodaySession(user.id),
-    fetchSessionsInMonth(user.id, year, month),
+    fetchSessionsInMonth(user.id, viewYear, viewMonth),
     fetchRecentExerciseHistory(user.id, 2),
-    fetchWeightsInMonth(user.id, year, month),
+    fetchWeightsInMonth(user.id, viewYear, viewMonth),
     fetchUserExercises(user.id),
   ]);
 
@@ -63,17 +84,24 @@ export default async function DashboardPage() {
   }
 
   const todayDateIso = seoulTodayIso();
-  const todayWeights = monthWeights.filter((w) => w.log_date === todayDateIso);
+  // 다른 달을 보고 있어도 FAB 다이얼로그에 오늘 기록이 노출되어야 하므로
+  // current month 아니면 오늘 달 weights를 별도 조회.
+  const todayWeightsSource = isCurrentMonth
+    ? monthWeights
+    : await fetchWeightsInMonth(user.id, todayYear, todayMonth);
+  const todayWeights = todayWeightsSource.filter(
+    (w) => w.log_date === todayDateIso,
+  );
 
   const todayDayLabel = DAY_LABELS[dayOfWeek];
-  const todayFormatted = `${month}월 ${todayDay}일`;
+  const todayFormatted = `${todayMonth}월 ${todayDay}일`;
 
   return (
     <Dashboard
       todaySession={todaySession}
-      year={year}
-      month={month}
-      todayDayOfMonth={todayDay}
+      year={viewYear}
+      month={viewMonth}
+      todayDayOfMonth={isCurrentMonth ? todayDay : undefined}
       dotsByDate={dotsByDate}
       weightByDate={weightByDate}
       todayWeights={todayWeights}

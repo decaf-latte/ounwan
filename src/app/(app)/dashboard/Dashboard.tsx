@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Check, TrendingUp } from "lucide-react";
+import {
+  LogOut,
+  Check,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -27,7 +33,8 @@ type Props = {
   todayDateIso: string;
   recentExercises: RecentExercise[];
   catalog: Array<{ id: string; name: string }>;
-  todayDayOfMonth: number;
+  /** 현재 보고 있는 달이 오늘이 속한 달일 때만 설정 */
+  todayDayOfMonth?: number;
   /** "월" / "화" / ... */
   todayDayLabel: string;
   /** "6월 1일" */
@@ -194,9 +201,33 @@ export function Dashboard({
       {/* ── 이번 달 캘린더 ── */}
       <section className="mt-4">
         <div className="flex justify-between items-center mb-3">
-          <MonoLabel>
-            {year} / {String(month).padStart(2, "0")}
-          </MonoLabel>
+          <div className="flex items-center gap-1">
+            <Link
+              href={`/dashboard?vy=${month === 1 ? year - 1 : year}&vm=${month === 1 ? 12 : month - 1}`}
+              aria-label="이전 달"
+              className="p-1 -ml-1 text-text-muted hover:text-text"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Link>
+            <MonoLabel>
+              {year} / {String(month).padStart(2, "0")}
+            </MonoLabel>
+            <Link
+              href={`/dashboard?vy=${month === 12 ? year + 1 : year}&vm=${month === 12 ? 1 : month + 1}`}
+              aria-label="다음 달"
+              className="p-1 text-text-muted hover:text-text"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+            {todayDayOfMonth === undefined && (
+              <Link
+                href="/dashboard"
+                className="ml-1 text-caption text-accent hover:underline"
+              >
+                오늘로
+              </Link>
+            )}
+          </div>
           <Link
             href="/weight"
             className="inline-flex items-center gap-1 text-caption text-text-muted hover:text-text"
