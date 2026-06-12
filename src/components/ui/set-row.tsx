@@ -7,9 +7,15 @@ export type SetRowStatus = "done" | "active" | "upcoming";
 export type SetSide = "both" | "left" | "right";
 
 const SIDE_LABEL: Record<SetSide, string> = {
+  both: "양쪽",
+  left: "왼쪽",
+  right: "오른쪽",
+};
+
+const SIDE_LABEL_SHORT: Record<SetSide, string> = {
   both: "양",
-  left: "L",
-  right: "R",
+  left: "왼",
+  right: "오",
 };
 
 const NEXT_SIDE: Record<SetSide, SetSide> = {
@@ -48,14 +54,15 @@ function SideChip({
       type="button"
       onClick={() => onChange?.(NEXT_SIDE[side])}
       aria-label={`사이드: ${SIDE_LABEL[side]} (탭하여 변경)`}
+      title="탭하여 양쪽/왼쪽/오른쪽 전환"
       className={cn(
-        "shrink-0 w-7 h-7 rounded-md text-caption font-bold transition-colors",
+        "shrink-0 h-9 min-w-10 px-1.5 rounded-md text-caption font-bold transition-colors leading-none",
         isBoth
           ? "bg-surface border border-accent-soft text-text-muted"
-          : "bg-accent-soft text-accent-strong border border-accent",
+          : "bg-accent-soft text-accent-strong border-2 border-accent",
       )}
     >
-      {SIDE_LABEL[side]}
+      {SIDE_LABEL_SHORT[side]}쪽
     </button>
   );
 }
@@ -89,7 +96,7 @@ export function SetRow({
           <strong>{setNumber}세트</strong>
           {side !== "both" && (
             <span className="ml-1 text-caption text-accent-strong font-semibold">
-              ({SIDE_LABEL[side]})
+              {SIDE_LABEL[side]}
             </span>
           )}
         </div>
