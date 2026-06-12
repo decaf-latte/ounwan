@@ -31,6 +31,7 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ### Fixed
 - 변형 운동 카드 추가 후 화면에 안 보이던 문제 — drafts 상태가 첫 마운트 때만 초기화돼서 새 exercise에 슬롯 없었음. useEffect로 exercises prop 변경 시 drafts 자동 동기화 (`#39`)
+- 운동 추가/변형 추가 후 페이지 수동 새로고침해야 보이던 문제 — server action에 `revalidatePath('/workout/[sessionId]')` 추가해 router.refresh()가 실제로 fresh data 가져오도록 (`#40`)
 
 ## 2026-06-11
 

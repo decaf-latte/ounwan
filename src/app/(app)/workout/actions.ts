@@ -262,6 +262,7 @@ export async function addSidedVariantToSession(input: {
     }
   }
 
+  revalidatePath(`/workout/${input.sessionId}`);
   return { ok: true, variantId };
 }
 
@@ -300,6 +301,7 @@ export async function addExerciseToSession(input: {
     console.error("addExerciseToSession failed", error);
     return { ok: false, error: "운동 추가 실패" };
   }
+  revalidatePath(`/workout/${input.sessionId}`);
   return { ok: true };
 }
 
