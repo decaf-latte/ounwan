@@ -12,27 +12,14 @@ const SIDE_LABEL: Record<SetSide, string> = {
   right: "오른쪽",
 };
 
-const SIDE_LABEL_SHORT: Record<SetSide, string> = {
-  both: "양",
-  left: "왼",
-  right: "오",
-};
-
-const NEXT_SIDE: Record<SetSide, SetSide> = {
-  both: "left",
-  left: "right",
-  right: "both",
-};
-
 type Props = {
   setNumber: number;
   status: SetRowStatus;
   /** done이면 표시할 값, active이면 input value, upcoming이면 무시 */
   weight: string;
   reps: string;
-  /** 양쪽/왼쪽/오른쪽 — 기본 both */
+  /** 양쪽/왼쪽/오른쪽 — 기본 both. done 상태에서 라벨로 노출. */
   side?: SetSide;
-  onSideChange?: (next: SetSide) => void;
   onWeightChange?: (v: string) => void;
   onRepsChange?: (v: string) => void;
   onCheck?: () => void;
@@ -40,32 +27,6 @@ type Props = {
   /** 편집 모드에서 done 세트 삭제 — 있으면 ⊖ 버튼 노출 */
   onDelete?: () => void;
 };
-
-function SideChip({
-  side,
-  onChange,
-}: {
-  side: SetSide;
-  onChange?: (next: SetSide) => void;
-}) {
-  const isBoth = side === "both";
-  return (
-    <button
-      type="button"
-      onClick={() => onChange?.(NEXT_SIDE[side])}
-      aria-label={`사이드: ${SIDE_LABEL[side]} (탭하여 변경)`}
-      title="탭하여 양쪽/왼쪽/오른쪽 전환"
-      className={cn(
-        "shrink-0 h-9 min-w-10 px-1.5 rounded-md text-caption font-bold transition-colors leading-none",
-        isBoth
-          ? "bg-surface border border-accent-soft text-text-muted"
-          : "bg-accent-soft text-accent-strong border-2 border-accent",
-      )}
-    >
-      {SIDE_LABEL_SHORT[side]}쪽
-    </button>
-  );
-}
 
 /**
  * 세트 1줄 — 3가지 상태:
@@ -79,7 +40,6 @@ export function SetRow({
   weight,
   reps,
   side = "both",
-  onSideChange,
   onWeightChange,
   onRepsChange,
   onCheck,
@@ -148,11 +108,15 @@ export function SetRow({
         inputMode="numeric"
         type="number"
         placeholder="회"
-        className="w-14 shrink-0 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
+        className="w-16 shrink-0 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
         value={reps}
         onChange={(e) => onRepsChange?.(e.target.value)}
       />
-      <SideChip side={side} onChange={onSideChange} />
+      {side !== "both" && (
+        <span className="shrink-0 text-caption font-bold text-accent-strong">
+          {SIDE_LABEL[side]}
+        </span>
+      )}
       <button
         type="button"
         disabled={checkDisabled}

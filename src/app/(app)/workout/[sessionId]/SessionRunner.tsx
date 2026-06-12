@@ -215,7 +215,22 @@ export function SessionRunner({
     });
   };
 
-  const handleAddSet = (exerciseId: string) => {
+  const SIDE_KO: Record<SetSide, string> = {
+    both: "양쪽",
+    left: "왼쪽",
+    right: "오른쪽",
+  };
+
+  const handleAddSet = (exerciseId: string, side: SetSide = "both") => {
+    if (side !== "both") {
+      const exName =
+        exercises.find((e) => e.id === exerciseId)?.name ?? "운동";
+      if (
+        !window.confirm(`${exName} ${SIDE_KO[side]} 세트를 추가할까요?`)
+      ) {
+        return;
+      }
+    }
     setDrafts((prev) => {
       const list = prev[exerciseId] ?? [];
       const last = list[list.length - 1];
@@ -223,7 +238,7 @@ export function SessionRunner({
         setNumber: (last?.setNumber ?? 0) + 1,
         weightKg: last?.weightKg ?? "",
         reps: last?.reps ?? "",
-        side: last?.side ?? "both",
+        side,
       };
       return { ...prev, [exerciseId]: [...list, next] };
     });
@@ -491,14 +506,6 @@ export function SessionRunner({
                 weight={draft.weightKg}
                 reps={draft.reps}
                 side={draft.side}
-                onSideChange={(next) =>
-                  setDrafts((prev) => {
-                    const copy = { ...prev };
-                    copy[ex.id] = [...copy[ex.id]];
-                    copy[ex.id][idx] = { ...draft, side: next };
-                    return copy;
-                  })
-                }
                 onWeightChange={(v) =>
                   setDrafts((prev) => {
                     const copy = { ...prev };
@@ -547,15 +554,33 @@ export function SessionRunner({
             );
           })}
           {!editMode && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-caption text-text-muted mr-1">
+                + 세트:
+              </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => handleAddSet(ex.id)}
-                className="flex-1"
+                onClick={() => handleAddSet(ex.id, "both")}
               >
-                + 세트 추가
+                양쪽
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAddSet(ex.id, "left")}
+              >
+                왼쪽
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAddSet(ex.id, "right")}
+              >
+                오른쪽
               </Button>
               {(drafts[ex.id]?.length ?? 0) > 1 && (
                 <Button
@@ -563,7 +588,7 @@ export function SessionRunner({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleRemoveLastDraft(ex.id)}
-                  className="text-text-muted"
+                  className="ml-auto text-text-muted"
                 >
                   − 세트
                 </Button>
