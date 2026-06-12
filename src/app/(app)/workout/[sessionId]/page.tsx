@@ -73,6 +73,7 @@ export default async function SessionPage({
         initialSets={existingSets}
         prefillDefaults={prefillDefaults}
         initialCardio={initialCardio}
+        catalog={allExercises}
       />
     </main>
   );

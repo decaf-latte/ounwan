@@ -171,6 +171,44 @@ export async function removeExerciseFromSession(input: {
   redirect(`/workout/${input.sessionId}`);
 }
 
+/**
+ * 진행 중 세션에 운동 1개 추가 — planned_exercise_ids 에 append.
+ * 이미 들어있으면 no-op.
+ */
+export async function addExerciseToSession(input: {
+  sessionId: string;
+  exerciseId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+
+  const { data: session, error: sErr } = await supabase
+    .from("workout_sessions")
+    .select("planned_exercise_ids")
+    .eq("id", input.sessionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (sErr || !session) return { ok: false, error: "세션을 찾을 수 없습니다" };
+
+  const planned = session.planned_exercise_ids ?? [];
+  if (planned.includes(input.exerciseId)) return { ok: true };
+
+  const { error } = await supabase
+    .from("workout_sessions")
+    .update({ planned_exercise_ids: [...planned, input.exerciseId] })
+    .eq("id", input.sessionId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("addExerciseToSession failed", error);
+    return { ok: false, error: "운동 추가 실패" };
+  }
+  return { ok: true };
+}
+
 // ── 기록 삭제 (종료된 세션 — /history 세션 상세 모달용) ───────────────
 // redirect 없음. 모달에서 결과 받아 캐시 무효화 + router.refresh.
 
