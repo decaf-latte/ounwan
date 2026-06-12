@@ -230,13 +230,33 @@ export function SessionRunner({
   };
 
   const handleRemoveLastDraft = (exerciseId: string) => {
-    setDrafts((prev) => {
-      const list = prev[exerciseId] ?? [];
-      if (list.length === 0) return prev;
-      const last = list[list.length - 1];
-      // 저장된 세트면 보존 (편집 모드 ⊖로 삭제)
-      if (isSaved(exerciseId, last.setNumber)) return prev;
-      return { ...prev, [exerciseId]: list.slice(0, -1) };
+    const list = drafts[exerciseId] ?? [];
+    if (list.length === 0) return;
+    const last = list[list.length - 1];
+    const savedTarget = savedSets.find(
+      (s) =>
+        s.exercise_id === exerciseId &&
+        s.set_number === last.setNumber &&
+        s.parent_set_id === null,
+    );
+
+    if (!savedTarget) {
+      setDrafts((prev) => ({ ...prev, [exerciseId]: list.slice(0, -1) }));
+      return;
+    }
+
+    // 저장된 세트면 DB에서도 삭제 (optimistic: 둘 다 즉시 제거, 실패 시 롤백)
+    const prevSaved = savedSets;
+    const prevDrafts = drafts;
+    setSavedSets((curr) => curr.filter((s) => s.id !== savedTarget.id));
+    setDrafts((prev) => ({ ...prev, [exerciseId]: list.slice(0, -1) }));
+    startSetDelete(async () => {
+      const result = await deleteSet(savedTarget.id);
+      if (!result.ok) {
+        setSavedSets(prevSaved);
+        setDrafts(prevDrafts);
+        toast.error(result.error);
+      }
     });
   };
 
@@ -537,21 +557,17 @@ export function SessionRunner({
               >
                 + 세트 추가
               </Button>
-              {(drafts[ex.id]?.length ?? 0) > 1 &&
-                !isSaved(
-                  ex.id,
-                  drafts[ex.id][drafts[ex.id].length - 1].setNumber,
-                ) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveLastDraft(ex.id)}
-                    className="text-text-muted"
-                  >
-                    − 세트
-                  </Button>
-                )}
+              {(drafts[ex.id]?.length ?? 0) > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveLastDraft(ex.id)}
+                  className="text-text-muted"
+                >
+                  − 세트
+                </Button>
+              )}
             </div>
           )}
         </div>
