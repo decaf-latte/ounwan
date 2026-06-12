@@ -24,6 +24,10 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ### Changed
 - 사이드 입력 방식 재설계 — 세트별 토글 → 카드 하단 `+ 세트: [양쪽] [왼쪽] [오른쪽]` 버튼. 한쪽 선택 시 confirm 후 새 세트 row 생성 (`#37`)
+- 사이드 입력 한 번 더 재설계 — 왼쪽/오른쪽 선택 시 같은 카드에 세트 추가하던 동작을 **`X (왼쪽)` 변형 운동 카드 새로 생성**으로 변경. `exercises.parent_exercise_id` 활용 (`#38`)
+
+### Added
+- `addSidedVariantToSession` 서버 액션 — parent 운동의 한쪽씩 변형(왼쪽/오른쪽)을 찾거나 새로 생성하고 세션 planned에 append (`#38`)
 
 ## 2026-06-11
 

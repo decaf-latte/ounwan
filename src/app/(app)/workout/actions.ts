@@ -172,6 +172,100 @@ export async function removeExerciseFromSession(input: {
 }
 
 /**
+ * 진행 중 세션에 한쪽씩(왼쪽/오른쪽) 변형 운동 카드 추가.
+ * 1. exercises에 동일 user_id × parent_exercise_id × "X (왼쪽/오른쪽)" 이미 있으면 재사용
+ * 2. 없으면 새로 생성 (parent의 default_sets/reps 복사)
+ * 3. 세션 planned_exercise_ids 에 append (이미 들어있으면 no-op)
+ */
+export async function addSidedVariantToSession(input: {
+  sessionId: string;
+  parentExerciseId: string;
+  side: "left" | "right";
+}): Promise<
+  { ok: true; variantId: string } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인 필요" };
+
+  const { data: parent, error: pErr } = await supabase
+    .from("exercises")
+    .select(
+      "id, name, default_sets, default_reps_min, default_reps_max, equipment, is_unilateral, notes",
+    )
+    .eq("id", input.parentExerciseId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (pErr || !parent) {
+    return { ok: false, error: "원본 운동을 찾을 수 없습니다" };
+  }
+
+  const sideLabel = input.side === "left" ? "왼쪽" : "오른쪽";
+  const variantName = `${parent.name} (${sideLabel})`;
+
+  const { data: existing } = await supabase
+    .from("exercises")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("parent_exercise_id", input.parentExerciseId)
+    .eq("name", variantName)
+    .maybeSingle();
+
+  let variantId: string;
+  if (existing) {
+    variantId = existing.id;
+  } else {
+    const { data: created, error } = await supabase
+      .from("exercises")
+      .insert({
+        user_id: user.id,
+        name: variantName,
+        parent_exercise_id: input.parentExerciseId,
+        default_sets: parent.default_sets,
+        default_reps_min: parent.default_reps_min,
+        default_reps_max: parent.default_reps_max,
+        equipment: parent.equipment,
+        is_unilateral: true,
+        notes: parent.notes,
+      })
+      .select("id")
+      .single();
+    if (error || !created) {
+      console.error("create variant failed", error);
+      return { ok: false, error: "변형 운동 생성 실패" };
+    }
+    variantId = created.id;
+  }
+
+  const { data: session, error: sErr } = await supabase
+    .from("workout_sessions")
+    .select("planned_exercise_ids")
+    .eq("id", input.sessionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (sErr || !session) {
+    return { ok: false, error: "세션을 찾을 수 없습니다" };
+  }
+
+  const planned = session.planned_exercise_ids ?? [];
+  if (!planned.includes(variantId)) {
+    const { error: upErr } = await supabase
+      .from("workout_sessions")
+      .update({ planned_exercise_ids: [...planned, variantId] })
+      .eq("id", input.sessionId)
+      .eq("user_id", user.id);
+    if (upErr) {
+      console.error("planned append failed", upErr);
+      return { ok: false, error: "세션에 추가 실패" };
+    }
+  }
+
+  return { ok: true, variantId };
+}
+
+/**
  * 진행 중 세션에 운동 1개 추가 — planned_exercise_ids 에 append.
  * 이미 들어있으면 no-op.
  */
