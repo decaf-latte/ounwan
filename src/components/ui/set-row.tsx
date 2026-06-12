@@ -4,6 +4,19 @@ import { Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type SetRowStatus = "done" | "active" | "upcoming";
+export type SetSide = "both" | "left" | "right";
+
+const SIDE_LABEL: Record<SetSide, string> = {
+  both: "양",
+  left: "L",
+  right: "R",
+};
+
+const NEXT_SIDE: Record<SetSide, SetSide> = {
+  both: "left",
+  left: "right",
+  right: "both",
+};
 
 type Props = {
   setNumber: number;
@@ -11,6 +24,9 @@ type Props = {
   /** done이면 표시할 값, active이면 input value, upcoming이면 무시 */
   weight: string;
   reps: string;
+  /** 양쪽/왼쪽/오른쪽 — 기본 both */
+  side?: SetSide;
+  onSideChange?: (next: SetSide) => void;
   onWeightChange?: (v: string) => void;
   onRepsChange?: (v: string) => void;
   onCheck?: () => void;
@@ -18,6 +34,31 @@ type Props = {
   /** 편집 모드에서 done 세트 삭제 — 있으면 ⊖ 버튼 노출 */
   onDelete?: () => void;
 };
+
+function SideChip({
+  side,
+  onChange,
+}: {
+  side: SetSide;
+  onChange?: (next: SetSide) => void;
+}) {
+  const isBoth = side === "both";
+  return (
+    <button
+      type="button"
+      onClick={() => onChange?.(NEXT_SIDE[side])}
+      aria-label={`사이드: ${SIDE_LABEL[side]} (탭하여 변경)`}
+      className={cn(
+        "shrink-0 w-7 h-7 rounded-md text-caption font-bold transition-colors",
+        isBoth
+          ? "bg-surface border border-accent-soft text-text-muted"
+          : "bg-accent-soft text-accent-strong border border-accent",
+      )}
+    >
+      {SIDE_LABEL[side]}
+    </button>
+  );
+}
 
 /**
  * 세트 1줄 — 3가지 상태:
@@ -30,6 +71,8 @@ export function SetRow({
   status,
   weight,
   reps,
+  side = "both",
+  onSideChange,
   onWeightChange,
   onRepsChange,
   onCheck,
@@ -44,6 +87,11 @@ export function SetRow({
         </div>
         <div className="flex-1 text-body text-text">
           <strong>{setNumber}세트</strong>
+          {side !== "both" && (
+            <span className="ml-1 text-caption text-accent-strong font-semibold">
+              ({SIDE_LABEL[side]})
+            </span>
+          )}
         </div>
         <div className="text-body text-text font-bold">
           {weight}kg × {reps}
@@ -93,10 +141,11 @@ export function SetRow({
         inputMode="numeric"
         type="number"
         placeholder="회"
-        className="w-16 shrink-0 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
+        className="w-14 shrink-0 p-2 bg-surface border border-accent-soft rounded-md text-body font-bold focus:border-accent focus:outline-none"
         value={reps}
         onChange={(e) => onRepsChange?.(e.target.value)}
       />
+      <SideChip side={side} onChange={onSideChange} />
       <button
         type="button"
         disabled={checkDisabled}

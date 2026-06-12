@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SetRow } from "@/components/ui/set-row";
+import { SetRow, type SetSide } from "@/components/ui/set-row";
 import { celebrate } from "@/lib/celebrate";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +25,7 @@ import {
   removeExerciseFromSession,
   deleteSet,
   deleteSession,
+  addExerciseToSession,
 } from "@/app/(app)/workout/actions";
 import { ExerciseList } from "@/components/workout/ExerciseList";
 import { CardioCard } from "@/components/workout/CardioCard";
@@ -43,12 +44,15 @@ type Props = {
   initialSets: WorkoutSet[];
   prefillDefaults: Record<string, LastMainSet>; // exerciseId → 지난번 값
   initialCardio: CardioLog[];
+  /** 세션에 추가할 수 있는 전체 사용자 운동 카탈로그 */
+  catalog: ExerciseWithBodyParts[];
 };
 
 type DraftSet = {
   setNumber: number;
   weightKg: string;
   reps: string;
+  side: SetSide;
 };
 
 type SaveSetVars = {
@@ -56,6 +60,7 @@ type SaveSetVars = {
   setNumber: number;
   weightKg: number;
   reps: number;
+  side: SetSide;
 };
 
 type SaveSetCtx = {
@@ -125,6 +130,7 @@ export function SessionRunner({
   initialSets,
   prefillDefaults,
   initialCardio,
+  catalog,
 }: Props) {
   const supabase = useMemo(() => createClient(), []);
 
@@ -146,12 +152,14 @@ export function SessionRunner({
           setNumber: s.set_number,
           weightKg: s.weight_kg?.toString() ?? "",
           reps: s.reps?.toString() ?? "",
+          side: ((s.side as SetSide | null) ?? "both") as SetSide,
         }));
         while (out[ex.id].length < n) {
           out[ex.id].push({
             setNumber: out[ex.id].length + 1,
             weightKg: defaultWeight,
             reps: defaultReps,
+            side: "both",
           });
         }
       } else {
@@ -159,6 +167,7 @@ export function SessionRunner({
           setNumber: i + 1,
           weightKg: defaultWeight,
           reps: defaultReps,
+          side: "both",
         }));
       }
     }
@@ -175,7 +184,61 @@ export function SessionRunner({
   const [cardioCount, setCardioCount] = useState(initialCardio.length);
   const [deleteSessionOpen, setDeleteSessionOpen] = useState(false);
   const [isDeletingSession, startDeleteSession] = useTransition();
+  const [addExerciseOpen, setAddExerciseOpen] = useState(false);
+  const [exerciseSearch, setExerciseSearch] = useState("");
+  const [isAddingExercise, startAddExercise] = useTransition();
   const router = useRouter();
+
+  const addableExercises = useMemo(() => {
+    const inSession = new Set(exercises.map((e) => e.id));
+    const q = exerciseSearch.trim().toLowerCase();
+    return catalog
+      .filter((e) => !inSession.has(e.id))
+      .filter((e) => (q ? e.name.toLowerCase().includes(q) : true))
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  }, [catalog, exercises, exerciseSearch]);
+
+  const handleAddExercise = (exerciseId: string) => {
+    startAddExercise(async () => {
+      const result = await addExerciseToSession({
+        sessionId: session.id,
+        exerciseId,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("운동 추가됨");
+      setAddExerciseOpen(false);
+      setExerciseSearch("");
+      router.refresh();
+    });
+  };
+
+  const handleAddSet = (exerciseId: string) => {
+    setDrafts((prev) => {
+      const list = prev[exerciseId] ?? [];
+      const last = list[list.length - 1];
+      const next: DraftSet = {
+        setNumber: (last?.setNumber ?? 0) + 1,
+        weightKg: last?.weightKg ?? "",
+        reps: last?.reps ?? "",
+        side: last?.side ?? "both",
+      };
+      return { ...prev, [exerciseId]: [...list, next] };
+    });
+  };
+
+  const handleRemoveLastDraft = (exerciseId: string) => {
+    setDrafts((prev) => {
+      const list = prev[exerciseId] ?? [];
+      if (list.length === 0) return prev;
+      const last = list[list.length - 1];
+      // 저장된 세트면 보존 (편집 모드 ⊖로 삭제)
+      if (isSaved(exerciseId, last.setNumber)) return prev;
+      return { ...prev, [exerciseId]: list.slice(0, -1) };
+    });
+  };
 
   const handleDeleteSession = () => {
     startDeleteSession(async () => {
@@ -222,28 +285,27 @@ export function SessionRunner({
 
   const computedActiveId = useMemo(() => {
     for (const ex of exercises) {
-      const targetSets = ex.default_sets ?? 3;
+      const totalDrafts = drafts[ex.id]?.length ?? 0;
       const savedMainSets = savedSets.filter(
         (s) => s.exercise_id === ex.id && s.parent_set_id === null,
       ).length;
-      if (savedMainSets < targetSets) return ex.id;
+      if (savedMainSets < totalDrafts) return ex.id;
     }
     return null;
-  }, [exercises, savedSets]);
+  }, [exercises, drafts, savedSets]);
 
   // 사용자가 고른 운동이 완료(또는 삭제)되면 무시 → computedActiveId가 다음 운동을 가리킴.
-  // setState-in-effect 대신 순수 파생으로 처리 (stale pick 자동 해소).
   const effectivePickedId = useMemo(() => {
     if (!userPickedExId) return null;
     const target = exercises.find((e) => e.id === userPickedExId);
     if (!target) return null;
-    const targetSets = target.default_sets ?? 3;
+    const totalDrafts = drafts[userPickedExId]?.length ?? 0;
     const saved = savedSets.filter(
       (s) => s.exercise_id === userPickedExId && s.parent_set_id === null,
     ).length;
-    if (saved >= targetSets) return null;
+    if (saved >= totalDrafts) return null;
     return userPickedExId;
-  }, [userPickedExId, exercises, savedSets]);
+  }, [userPickedExId, exercises, drafts, savedSets]);
 
   const activeExerciseId = effectivePickedId ?? computedActiveId;
   const allDone = activeExerciseId === null;
@@ -254,10 +316,10 @@ export function SessionRunner({
       const saved = savedSets.filter(
         (s) => s.exercise_id === ex.id && s.parent_set_id === null,
       ).length;
-      out[ex.id] = { saved, target: ex.default_sets ?? 3 };
+      out[ex.id] = { saved, target: drafts[ex.id]?.length ?? 0 };
     }
     return out;
-  }, [exercises, savedSets]);
+  }, [exercises, drafts, savedSets]);
 
   const saveSet = useMutation<WorkoutSet, Error, SaveSetVars, SaveSetCtx>({
     mutationFn: async (vars) => {
@@ -267,7 +329,7 @@ export function SessionRunner({
         set_number: vars.setNumber,
         weight_kg: vars.weightKg,
         reps: vars.reps,
-        side: "both",
+        side: vars.side,
         drop_order: 0,
         parent_set_id: null,
       };
@@ -289,7 +351,7 @@ export function SessionRunner({
         set_number: vars.setNumber,
         weight_kg: vars.weightKg,
         reps: vars.reps,
-        side: "both",
+        side: vars.side,
         drop_order: 0,
         parent_set_id: null,
         memo: null,
@@ -408,6 +470,15 @@ export function SessionRunner({
                 status={status}
                 weight={draft.weightKg}
                 reps={draft.reps}
+                side={draft.side}
+                onSideChange={(next) =>
+                  setDrafts((prev) => {
+                    const copy = { ...prev };
+                    copy[ex.id] = [...copy[ex.id]];
+                    copy[ex.id][idx] = { ...draft, side: next };
+                    return copy;
+                  })
+                }
                 onWeightChange={(v) =>
                   setDrafts((prev) => {
                     const copy = { ...prev };
@@ -449,11 +520,40 @@ export function SessionRunner({
                     setNumber: draft.setNumber,
                     weightKg: w,
                     reps: r,
+                    side: draft.side,
                   });
                 }}
               />
             );
           })}
+          {!editMode && (
+            <div className="mt-3 flex gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAddSet(ex.id)}
+                className="flex-1"
+              >
+                + 세트 추가
+              </Button>
+              {(drafts[ex.id]?.length ?? 0) > 1 &&
+                !isSaved(
+                  ex.id,
+                  drafts[ex.id][drafts[ex.id].length - 1].setNumber,
+                ) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveLastDraft(ex.id)}
+                    className="text-text-muted"
+                  >
+                    − 세트
+                  </Button>
+                )}
+            </div>
+          )}
         </div>
       </ExerciseCardWrapper>
     );
@@ -477,6 +577,15 @@ export function SessionRunner({
             </p>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAddExerciseOpen(true)}
+              disabled={isAddingExercise}
+            >
+              <Plus className="w-3.5 h-3.5 mr-0.5" />
+              운동
+            </Button>
             <Button
               variant={editMode ? "default" : "ghost"}
               size="sm"
@@ -538,6 +647,47 @@ export function SessionRunner({
           {isFinishing ? "종료 중..." : "운동 종료"}
         </Button>
       </div>
+
+      <Dialog open={addExerciseOpen} onOpenChange={setAddExerciseOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>운동 추가</DialogTitle>
+          </DialogHeader>
+          <input
+            type="text"
+            placeholder="운동 이름 검색"
+            value={exerciseSearch}
+            onChange={(e) => setExerciseSearch(e.target.value)}
+            className="w-full p-2 bg-surface border border-accent-soft rounded-md text-body focus:border-accent focus:outline-none"
+            autoFocus
+          />
+          <ul className="max-h-72 overflow-y-auto -mx-1 mt-2">
+            {addableExercises.length === 0 ? (
+              <li className="px-3 py-4 text-caption text-text-muted text-center">
+                {catalog.length === 0
+                  ? "사용 가능한 운동이 없어요"
+                  : "이미 세션에 모두 들어있어요"}
+              </li>
+            ) : (
+              addableExercises.map((ex) => (
+                <li key={ex.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleAddExercise(ex.id)}
+                    disabled={isAddingExercise}
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-accent-soft transition-colors text-body text-text disabled:opacity-50"
+                  >
+                    {ex.name}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost">닫기</Button>} />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteSessionOpen} onOpenChange={setDeleteSessionOpen}>
         <DialogContent>
