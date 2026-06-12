@@ -33,6 +33,9 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 - 변형 운동 카드 추가 후 화면에 안 보이던 문제 — drafts 상태가 첫 마운트 때만 초기화돼서 새 exercise에 슬롯 없었음. useEffect로 exercises prop 변경 시 drafts 자동 동기화 (`#39`)
 - 운동 추가/변형 추가 후 페이지 수동 새로고침해야 보이던 문제 — server action에 `revalidatePath('/workout/[sessionId]')` 추가해 router.refresh()가 실제로 fresh data 가져오도록 (`#40`)
 
+### Added
+- BottomTab/Sidebar 4번째 탭 **루틴** + `/routines` 페이지 — `overall_notes`의 `[Pt 상체 등]`·`[개인운동 등]` 라벨로 과거 세션을 그룹핑해서 운동 구성·수행 횟수·최근 일자 노출. "시작" 버튼으로 그 루틴 그대로 새 세션 시작 가능 (`#41`)
+
 ## 2026-06-11
 
 ### Added

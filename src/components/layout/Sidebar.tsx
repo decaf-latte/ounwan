@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Dumbbell, BarChart3, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Dumbbell,
+  BarChart3,
+  ListChecks,
+  LogOut,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -26,6 +32,12 @@ const NAV = [
     label: "기록",
     icon: BarChart3,
     matchPrefix: "/history",
+  },
+  {
+    href: "/routines",
+    label: "루틴",
+    icon: ListChecks,
+    matchPrefix: "/routines",
   },
 ];
 
