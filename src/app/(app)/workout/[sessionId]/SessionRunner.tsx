@@ -26,6 +26,7 @@ import {
   deleteSet,
   deleteSession,
   addExerciseToSession,
+  addSidedVariantToSession,
 } from "@/app/(app)/workout/actions";
 import { ExerciseList } from "@/components/workout/ExerciseList";
 import { CardioCard } from "@/components/workout/CardioCard";
@@ -54,6 +55,13 @@ type DraftSet = {
   reps: string;
   side: SetSide;
 };
+
+/** 변형 카드 (한쪽씩) — 이름 끝이 (왼쪽) / (오른쪽) */
+function inferVariantSide(name: string): SetSide {
+  if (name.endsWith("(왼쪽)")) return "left";
+  if (name.endsWith("(오른쪽)")) return "right";
+  return "both";
+}
 
 type SaveSetVars = {
   exerciseId: string;
@@ -146,20 +154,21 @@ export function SessionRunner({
       const defaultWeight =
         prefill?.weightKg != null ? String(prefill.weightKg) : "";
       const defaultReps = prefill?.reps != null ? String(prefill.reps) : "";
+      const cardSide = inferVariantSide(ex.name);
 
       if (existing.length > 0) {
         out[ex.id] = existing.map((s) => ({
           setNumber: s.set_number,
           weightKg: s.weight_kg?.toString() ?? "",
           reps: s.reps?.toString() ?? "",
-          side: ((s.side as SetSide | null) ?? "both") as SetSide,
+          side: ((s.side as SetSide | null) ?? cardSide) as SetSide,
         }));
         while (out[ex.id].length < n) {
           out[ex.id].push({
             setNumber: out[ex.id].length + 1,
             weightKg: defaultWeight,
             reps: defaultReps,
-            side: "both",
+            side: cardSide,
           });
         }
       } else {
@@ -167,7 +176,7 @@ export function SessionRunner({
           setNumber: i + 1,
           weightKg: defaultWeight,
           reps: defaultReps,
-          side: "both",
+          side: cardSide,
         }));
       }
     }
@@ -215,22 +224,7 @@ export function SessionRunner({
     });
   };
 
-  const SIDE_KO: Record<SetSide, string> = {
-    both: "양쪽",
-    left: "왼쪽",
-    right: "오른쪽",
-  };
-
   const handleAddSet = (exerciseId: string, side: SetSide = "both") => {
-    if (side !== "both") {
-      const exName =
-        exercises.find((e) => e.id === exerciseId)?.name ?? "운동";
-      if (
-        !window.confirm(`${exName} ${SIDE_KO[side]} 세트를 추가할까요?`)
-      ) {
-        return;
-      }
-    }
     setDrafts((prev) => {
       const list = prev[exerciseId] ?? [];
       const last = list[list.length - 1];
@@ -241,6 +235,28 @@ export function SessionRunner({
         side,
       };
       return { ...prev, [exerciseId]: [...list, next] };
+    });
+  };
+
+  const handleAddVariant = (
+    parentExerciseId: string,
+    parentName: string,
+    side: "left" | "right",
+  ) => {
+    const sideKo = side === "left" ? "왼쪽" : "오른쪽";
+    if (!window.confirm(`${parentName} (${sideKo}) 추가할까요?`)) return;
+    startAddExercise(async () => {
+      const result = await addSidedVariantToSession({
+        sessionId: session.id,
+        parentExerciseId,
+        side,
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`${parentName} (${sideKo}) 추가됨`);
+      router.refresh();
     });
   };
 
@@ -553,48 +569,77 @@ export function SessionRunner({
               />
             );
           })}
-          {!editMode && (
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <span className="text-caption text-text-muted mr-1">
-                + 세트:
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAddSet(ex.id, "both")}
-              >
-                양쪽
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAddSet(ex.id, "left")}
-              >
-                왼쪽
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAddSet(ex.id, "right")}
-              >
-                오른쪽
-              </Button>
-              {(drafts[ex.id]?.length ?? 0) > 1 && (
+          {!editMode &&
+            (inferVariantSide(ex.name) !== "both" ? (
+              // 변형 카드 (X (왼쪽) / X (오른쪽)) — 단일 + 세트 추가
+              <div className="mt-3 flex items-center gap-2">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleRemoveLastDraft(ex.id)}
-                  className="ml-auto text-text-muted"
+                  onClick={() =>
+                    handleAddSet(ex.id, inferVariantSide(ex.name))
+                  }
                 >
-                  − 세트
+                  + 세트 추가
                 </Button>
-              )}
-            </div>
-          )}
+                {(drafts[ex.id]?.length ?? 0) > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveLastDraft(ex.id)}
+                    className="ml-auto text-text-muted"
+                  >
+                    − 세트
+                  </Button>
+                )}
+              </div>
+            ) : (
+              // 원본 카드 — 양쪽 / 왼쪽 / 오른쪽 (왼/오는 변형 카드 새로 생성)
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span className="text-caption text-text-muted mr-1">
+                  + 세트:
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAddSet(ex.id, "both")}
+                >
+                  양쪽
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isAddingExercise}
+                  onClick={() => handleAddVariant(ex.id, ex.name, "left")}
+                >
+                  왼쪽
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isAddingExercise}
+                  onClick={() => handleAddVariant(ex.id, ex.name, "right")}
+                >
+                  오른쪽
+                </Button>
+                {(drafts[ex.id]?.length ?? 0) > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveLastDraft(ex.id)}
+                    className="ml-auto text-text-muted"
+                  >
+                    − 세트
+                  </Button>
+                )}
+              </div>
+            ))}
         </div>
       </ExerciseCardWrapper>
     );
