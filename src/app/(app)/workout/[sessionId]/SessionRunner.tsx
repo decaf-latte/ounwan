@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -185,6 +185,32 @@ export function SessionRunner({
 
   const [savedSets, setSavedSets] = useState<WorkoutSet[]>(initialSets);
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
+
+  // router.refresh() 후 새로 추가된 운동(변형 카드 등)에 drafts 슬롯 초기화.
+  // 첫 마운트 후 exercises prop이 변경될 때 동기화한다.
+  useEffect(() => {
+    setDrafts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const ex of exercises) {
+        if (next[ex.id]) continue;
+        const n = ex.default_sets ?? 3;
+        const prefill = prefillDefaults[ex.id];
+        const defaultWeight =
+          prefill?.weightKg != null ? String(prefill.weightKg) : "";
+        const defaultReps = prefill?.reps != null ? String(prefill.reps) : "";
+        const cardSide = inferVariantSide(ex.name);
+        next[ex.id] = Array.from({ length: n }, (_, i) => ({
+          setNumber: i + 1,
+          weightKg: defaultWeight,
+          reps: defaultReps,
+          side: cardSide,
+        }));
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [exercises, prefillDefaults]);
   const [isFinishing, startFinish] = useTransition();
   const [isRemoving, startRemove] = useTransition();
   const [, startSetDelete] = useTransition();

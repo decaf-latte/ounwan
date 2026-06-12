@@ -29,6 +29,9 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 ### Added
 - `addSidedVariantToSession` 서버 액션 — parent 운동의 한쪽씩 변형(왼쪽/오른쪽)을 찾거나 새로 생성하고 세션 planned에 append (`#38`)
 
+### Fixed
+- 변형 운동 카드 추가 후 화면에 안 보이던 문제 — drafts 상태가 첫 마운트 때만 초기화돼서 새 exercise에 슬롯 없었음. useEffect로 exercises prop 변경 시 drafts 자동 동기화 (`#39`)
+
 ## 2026-06-11
 
 ### Added
