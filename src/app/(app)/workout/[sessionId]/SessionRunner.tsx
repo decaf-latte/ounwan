@@ -534,7 +534,7 @@ export function SessionRunner({
           )}
         </div>
         <div className="mt-1">
-          {drafts[ex.id].map((draft, idx) => {
+          {(drafts[ex.id] ?? []).map((draft, idx) => {
             const saved = isSaved(ex.id, draft.setNumber);
             const isActive = ex.id === activeExerciseId && !saved;
             const status = saved ? "done" : isActive ? "active" : "upcoming";
