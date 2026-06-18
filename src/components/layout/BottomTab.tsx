@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Dumbbell, BarChart3, ListChecks } from "lucide-react";
+import {
+  LayoutDashboard,
+  Dumbbell,
+  BarChart3,
+  ListChecks,
+  Trophy,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -29,6 +35,12 @@ const TABS = [
     label: "루틴",
     icon: ListChecks,
     matchPrefix: "/routines",
+  },
+  {
+    href: "/challenges",
+    label: "챌린지",
+    icon: Trophy,
+    matchPrefix: "/challenges",
   },
 ];
 

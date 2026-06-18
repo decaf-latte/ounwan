@@ -7,6 +7,7 @@ import {
   Dumbbell,
   BarChart3,
   ListChecks,
+  Trophy,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,12 @@ const NAV = [
     label: "루틴",
     icon: ListChecks,
     matchPrefix: "/routines",
+  },
+  {
+    href: "/challenges",
+    label: "챌린지",
+    icon: Trophy,
+    matchPrefix: "/challenges",
   },
 ];
 

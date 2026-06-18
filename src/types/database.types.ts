@@ -93,6 +93,68 @@ export type Database = {
         }
         Relationships: []
       }
+      challenges: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          target_days: number
+          rest_days_allowed: number
+          start_date: string
+          ended_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          target_days: number
+          rest_days_allowed?: number
+          start_date?: string
+          ended_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          target_days?: number
+          rest_days_allowed?: number
+          start_date?: string
+          ended_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      challenge_logs: {
+        Row: {
+          id: string
+          challenge_id: string
+          log_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          challenge_id: string
+          log_date: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          challenge_id?: string
+          log_date?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_logs_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cardio_logs: {
         Row: {
           created_at: string | null
