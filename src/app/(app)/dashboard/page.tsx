@@ -8,6 +8,7 @@ import { fetchRecentExerciseHistory } from "@/lib/queries/sets";
 import { fetchUserExercises } from "@/lib/queries/exercises";
 import { seoulTodayParts, seoulTodayIso } from "@/lib/seoul-date";
 import { fetchWeightsInMonth } from "@/lib/queries/body-weights";
+import { fetchActiveChallenges } from "@/lib/queries/challenges";
 import { Dashboard } from "./Dashboard";
 import type { DayEntry } from "@/components/ui/mini-calendar";
 
@@ -49,12 +50,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     recentExercises,
     monthWeights,
     allExercises,
+    activeChallenges,
   ] = await Promise.all([
     fetchTodaySession(user.id),
     fetchSessionsInMonth(user.id, viewYear, viewMonth),
     fetchRecentExerciseHistory(user.id, 2),
     fetchWeightsInMonth(user.id, viewYear, viewMonth),
     fetchUserExercises(user.id),
+    fetchActiveChallenges(user.id),
   ]);
 
   const catalog = allExercises
@@ -108,6 +111,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       todayDateIso={todayDateIso}
       recentExercises={recentExercises}
       catalog={catalog}
+      activeChallenges={activeChallenges.slice(0, 2)}
       todayDayLabel={todayDayLabel}
       todayFormatted={todayFormatted}
     />

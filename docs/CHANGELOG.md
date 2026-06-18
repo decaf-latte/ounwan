@@ -8,6 +8,18 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ## [Unreleased]
 
+## 2026-06-18
+
+### Added
+- 챌린지 기능 — N일 도전을 운동 세션과 독립적으로 매일 수동 체크 (`#43`)
+  - DB: `challenges` (id, name, target_days, rest_days_allowed, start_date) + `challenge_logs` (challenge_id, log_date UNIQUE) 신규 + RLS
+  - `/challenges` 페이지: 진행 중 카드 리스트, 새 챌린지 다이얼로그(이름·목표일·허용휴식일)
+  - `/challenges/[id]` 상세 페이지: 진행 캘린더 그리드(완료/빠짐/예정), 오늘 완료 토글, 종료/삭제
+  - BottomTab/Sidebar 5번째 탭 '챌린지' (Trophy 아이콘)
+  - 대시보드 위젯: 진행 중 챌린지 상위 2개 미니 카드 + 전체 관리 링크
+  - 진행률 = completed_days / target_days, on-track = missed_days <= rest_days_allowed
+  - 동시 여러 챌린지 허용, 종료 후에도 기록 유지
+
 ## 2026-06-17
 
 ### Added

@@ -9,6 +9,7 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
@@ -19,6 +20,7 @@ import { WeightFab } from "@/components/weight/WeightEntryDialog";
 import type { TodaySession } from "@/lib/queries/sessions";
 import type { RecentExercise } from "@/lib/queries/sets";
 import type { BodyWeightRow } from "@/lib/queries/body-weights";
+import type { ChallengeProgress } from "@/lib/queries/challenges";
 
 const EXERCISE_GOAL = 8;
 
@@ -33,6 +35,7 @@ type Props = {
   todayDateIso: string;
   recentExercises: RecentExercise[];
   catalog: Array<{ id: string; name: string }>;
+  activeChallenges: ChallengeProgress[];
   /** 현재 보고 있는 달이 오늘이 속한 달일 때만 설정 */
   todayDayOfMonth?: number;
   /** "월" / "화" / ... */
@@ -66,6 +69,7 @@ export function Dashboard({
   todayDateIso,
   recentExercises,
   catalog,
+  activeChallenges,
   todayDayOfMonth,
   todayDayLabel,
   todayFormatted,
@@ -245,6 +249,60 @@ export function Dashboard({
           onDateClick={handleDateClick}
         />
       </section>
+
+      {/* ── 진행 중 챌린지 ── */}
+      {activeChallenges.length > 0 && (
+        <>
+          <div className="mt-5">
+            <Rule />
+          </div>
+          <section className="mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <MonoLabel>진행 중 챌린지</MonoLabel>
+              <Link
+                href="/challenges"
+                className="inline-flex items-center gap-1 text-caption text-text-muted hover:text-text"
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span>전체 관리</span>
+              </Link>
+            </div>
+            <ul className="space-y-2">
+              {activeChallenges.map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/challenges/${c.id}`}
+                    className="block rounded-lg border border-border bg-surface p-3 hover:bg-accent-soft transition-colors"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-body font-semibold text-text truncate">
+                        {c.name}
+                      </span>
+                      <span className="text-caption font-mono text-text-muted shrink-0">
+                        {c.completedDays}/{c.target_days}일
+                        {c.doneToday && (
+                          <span className="ml-1 text-accent">✓</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 bg-line2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full transition-[width]"
+                        style={{
+                          width: `${Math.min(100, (c.completedDays / c.target_days) * 100)}%`,
+                          background: c.onTrack
+                            ? "var(--accent)"
+                            : "var(--danger)",
+                        }}
+                      />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
 
       {/* ── 최근 운동 ── */}
       {recentExercises.length > 0 && (
