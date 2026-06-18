@@ -93,68 +93,6 @@ export type Database = {
         }
         Relationships: []
       }
-      challenges: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          target_days: number
-          rest_days_allowed: number
-          start_date: string
-          ended_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          target_days: number
-          rest_days_allowed?: number
-          start_date?: string
-          ended_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          target_days?: number
-          rest_days_allowed?: number
-          start_date?: string
-          ended_at?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      challenge_logs: {
-        Row: {
-          id: string
-          challenge_id: string
-          log_date: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          challenge_id: string
-          log_date: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          challenge_id?: string
-          log_date?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "challenge_logs_challenge_id_fkey"
-            columns: ["challenge_id"]
-            isOneToOne: false
-            referencedRelation: "challenges"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cardio_logs: {
         Row: {
           created_at: string | null
@@ -192,6 +130,68 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      challenge_logs: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          id: string
+          log_date: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          id?: string
+          log_date: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          log_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_logs_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenges: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          name: string
+          rest_days_allowed: number
+          start_date: string
+          target_days: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          name: string
+          rest_days_allowed?: number
+          start_date?: string
+          target_days: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          name?: string
+          rest_days_allowed?: number
+          start_date?: string
+          target_days?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       exercise_body_parts: {
         Row: {
