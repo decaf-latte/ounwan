@@ -101,6 +101,40 @@ export async function fetchActiveChallenges(
   });
 }
 
+/** 특정 월의 일자별 챌린지 완료 개수 (day → count of distinct challenges done that day) */
+export async function fetchMonthChallengeCompletions(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<Record<number, number>> {
+  const supabase = await createClient();
+  const first = `${year}-${String(month).padStart(2, "0")}-01`;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const firstOfNext = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+  const { data, error } = await supabase
+    .from("challenge_logs")
+    .select("log_date, challenge_id, challenges!inner(user_id)")
+    .eq("challenges.user_id", userId)
+    .gte("log_date", first)
+    .lt("log_date", firstOfNext);
+  if (error) throw error;
+
+  const byDay: Record<number, Set<string>> = {};
+  for (const row of (data ?? []) as Array<{
+    log_date: string;
+    challenge_id: string;
+  }>) {
+    const day = Number(row.log_date.slice(8, 10));
+    if (!byDay[day]) byDay[day] = new Set();
+    byDay[day].add(row.challenge_id);
+  }
+  return Object.fromEntries(
+    Object.entries(byDay).map(([d, s]) => [Number(d), s.size]),
+  );
+}
+
 export async function fetchChallengeById(
   userId: string,
   challengeId: string,

@@ -1,5 +1,6 @@
 // src/components/ui/mini-calendar.tsx
 "use client";
+import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type DayEntry = {
@@ -8,6 +9,8 @@ export type DayEntry = {
   sessionIds: string[];
   /** 상체/하체 카테고리 (둘 다면 둘 다 포함) */
   categories?: Array<"upper" | "lower">;
+  /** 그날 수행한 운동 수 (unique) */
+  exerciseCount?: number;
 };
 
 type Props = {
@@ -18,6 +21,8 @@ type Props = {
   dotsByDate: Record<number, DayEntry>;
   /** 날짜별 몸무게 — 아침/저녁 각각 셀 아래에 배지로 노출. */
   weightByDate?: Record<number, { morning?: number; evening?: number }>;
+  /** 날짜별 챌린지 완료 개수. 1 이상이면 트로피 아이콘 노출. */
+  challengeByDate?: Record<number, number>;
   /** 미지정 시 비활성. 클릭 시 (day, 해당 날짜 entry) 전달. entry 없으면 빈 날짜. */
   onDateClick?: (day: number, entry?: DayEntry) => void;
   size?: "sm" | "md";
@@ -60,6 +65,7 @@ export function MiniCalendar({
   todayDayOfMonth,
   dotsByDate,
   weightByDate,
+  challengeByDate,
   onDateClick,
   size = "md",
 }: Props) {
@@ -92,17 +98,36 @@ export function MiniCalendar({
         const inMonth = dayNum >= 1 && dayNum <= daysInMonth;
         const entry = inMonth ? dotsByDate[dayNum] : undefined;
         const weights = inMonth ? weightByDate?.[dayNum] : undefined;
+        const challengeCount = inMonth
+          ? (challengeByDate?.[dayNum] ?? 0)
+          : 0;
         const isToday = inMonth && dayNum === todayDayOfMonth;
         const clickable = inMonth && !!onDateClick;
         const categories = entry?.categories ?? [];
+        const exerciseCount = entry?.exerciseCount ?? 0;
 
         const catStyle = categoryStyleFor(categories);
 
         const cellContent = (
           <>
+            {challengeCount > 0 && (
+              <span
+                className="absolute top-0.5 right-0.5 flex items-center gap-0.5 text-[9px] font-bold leading-none"
+                style={{ color: "#facc15" }}
+                aria-label={`챌린지 ${challengeCount}개 완료`}
+              >
+                <Trophy className="w-2.5 h-2.5" strokeWidth={2.5} />
+                {challengeCount > 1 && challengeCount}
+              </span>
+            )}
             <span className={cn(isSm ? "text-sm" : "text-base", "font-semibold")}>
               {inMonth ? dayNum : ""}
             </span>
+            {exerciseCount > 0 && (
+              <span className="mt-0.5 text-[9px] font-mono leading-none text-text-muted">
+                {exerciseCount}운동
+              </span>
+            )}
             {(weights?.morning !== undefined || weights?.evening !== undefined) && (
               <div className="mt-1 flex flex-col items-center gap-[3px]">
                 {weights?.morning !== undefined && (
@@ -147,7 +172,7 @@ export function MiniCalendar({
 
         const hasCatBorder = !isToday && !!catStyle;
         const cellCls = cn(
-          "rounded-md text-center flex flex-col items-center justify-center",
+          "relative rounded-md text-center flex flex-col items-center justify-center",
           isSm ? "min-h-14 p-1.5" : "min-h-16 p-2",
           isToday && "border-2 border-accent",
           hasCatBorder && "border-2",

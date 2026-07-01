@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button";
 import { MiniCalendar, type DayEntry } from "@/components/ui/mini-calendar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { SessionDetailDialog } from "@/components/workout/SessionDetailDialog";
+import { WeekView } from "@/components/dashboard/WeekView";
 import { signOut } from "@/app/(app)/dashboard/actions";
 import { WeightFab } from "@/components/weight/WeightEntryDialog";
-import type { TodaySession } from "@/lib/queries/sessions";
+import type { MonthSessionEntry, TodaySession } from "@/lib/queries/sessions";
 import type { RecentExercise } from "@/lib/queries/sets";
 import type { BodyWeightRow } from "@/lib/queries/body-weights";
 import type { ChallengeProgress } from "@/lib/queries/challenges";
@@ -30,6 +31,8 @@ type Props = {
   /** 1-indexed */
   month: number;
   dotsByDate: Record<number, DayEntry>;
+  monthSessions: MonthSessionEntry[];
+  challengeByDate: Record<number, number>;
   weightByDate: Record<number, { morning?: number; evening?: number }>;
   todayWeights: BodyWeightRow[];
   todayDateIso: string;
@@ -64,6 +67,8 @@ export function Dashboard({
   year,
   month,
   dotsByDate,
+  monthSessions,
+  challengeByDate,
   weightByDate,
   todayWeights,
   todayDateIso,
@@ -78,13 +83,12 @@ export function Dashboard({
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
     null,
   );
+  const [viewMode, setViewMode] = useState<"month" | "week">("month");
+  const [weekAnchor, setWeekAnchor] = useState<number>(todayDayOfMonth ?? 1);
 
-  const handleDateClick = (_day: number, entry?: DayEntry) => {
-    if (entry && entry.sessionIds[0]) {
-      setSelectedSessionId(entry.sessionIds[0]);
-    } else {
-      router.push("/workout/new");
-    }
+  const handleDateClick = (day: number, _entry?: DayEntry) => {
+    setWeekAnchor(day);
+    setViewMode("week");
   };
 
   const completed = todaySession !== null;
@@ -240,14 +244,30 @@ export function Dashboard({
             <span>몸무게 추이</span>
           </Link>
         </div>
-        <MiniCalendar
-          year={year}
-          month={month}
-          todayDayOfMonth={todayDayOfMonth}
-          dotsByDate={dotsByDate}
-          weightByDate={weightByDate}
-          onDateClick={handleDateClick}
-        />
+        {viewMode === "month" ? (
+          <MiniCalendar
+            year={year}
+            month={month}
+            todayDayOfMonth={todayDayOfMonth}
+            dotsByDate={dotsByDate}
+            weightByDate={weightByDate}
+            challengeByDate={challengeByDate}
+            onDateClick={handleDateClick}
+          />
+        ) : (
+          <WeekView
+            year={year}
+            month={month}
+            anchorDay={weekAnchor}
+            todayDayOfMonth={todayDayOfMonth}
+            monthSessions={monthSessions}
+            weightByDate={weightByDate}
+            challengeByDate={challengeByDate}
+            onBack={() => setViewMode("month")}
+            onSelectSession={(sid) => setSelectedSessionId(sid)}
+            onEmptyDateClick={() => router.push("/workout/new")}
+          />
+        )}
       </section>
 
       {/* ── 진행 중 챌린지 ── */}
