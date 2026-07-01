@@ -8,6 +8,14 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ## [Unreleased]
 
+## 2026-07-01
+
+### Added
+- 대시보드 캘린더 셀에 트로피 아이콘 (그날 챌린지 완료 개수) + `N운동` 텍스트 (`#44`)
+- 캘린더 날짜 클릭 시 주간 뷰로 전환 — 월~일 7일 리스트로 운동명·몸무게·챌린지 상세 노출, "← 월간으로" 복귀 (`#44`)
+- `fetchMonthChallengeCompletions` 쿼리 — 일별 챌린지 완료 개수
+- `MonthSessionEntry`에 `exercises: [{id, name}]` 필드 추가 (unique per day)
+
 ## 2026-06-18
 
 ### Added

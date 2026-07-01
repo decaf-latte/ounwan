@@ -228,6 +228,8 @@ export type MonthSessionEntry = {
   bodyPartColors: string[];
   /** 상체/하체 카테고리. 한 세션이 둘 다 포함 시 둘 다 들어감. */
   categories: Array<"upper" | "lower">;
+  /** 그날 수행한 unique 운동 (이름 오름차순) */
+  exercises: Array<{ id: string; name: string }>;
 };
 
 /**
@@ -253,6 +255,8 @@ export async function fetchSessionsInMonth(
       started_at,
       workout_sets!inner (
         exercises!inner (
+          id,
+          name,
           exercise_body_parts (
             is_primary,
             body_parts ( code, color )
@@ -272,6 +276,8 @@ export async function fetchSessionsInMonth(
     started_at: string;
     workout_sets: Array<{
       exercises: {
+        id: string;
+        name: string;
         exercise_body_parts: Array<{
           is_primary: boolean | null;
           body_parts: { code: string | null; color: string | null } | null;
@@ -280,7 +286,10 @@ export async function fetchSessionsInMonth(
     }>;
   };
 
-  const byDay = new Map<number, MonthSessionEntry>();
+  const byDay = new Map<
+    number,
+    MonthSessionEntry & { exerciseMap: Map<string, string> }
+  >();
   for (const row of (data ?? []) as unknown as Row[]) {
     const day = seoulDayOfMonth(row.started_at);
     if (!byDay.has(day)) {
@@ -289,6 +298,8 @@ export async function fetchSessionsInMonth(
         sessionIds: [],
         bodyPartColors: [],
         categories: [],
+        exercises: [],
+        exerciseMap: new Map(),
       });
     }
     const entry = byDay.get(day)!;
@@ -296,7 +307,11 @@ export async function fetchSessionsInMonth(
       entry.sessionIds.push(row.id);
     }
     for (const ws of row.workout_sets) {
-      for (const ebp of ws.exercises.exercise_body_parts) {
+      const ex = ws.exercises;
+      if (ex && !entry.exerciseMap.has(ex.id)) {
+        entry.exerciseMap.set(ex.id, ex.name);
+      }
+      for (const ebp of ex?.exercise_body_parts ?? []) {
         if (ebp.is_primary !== true || !ebp.body_parts) continue;
         const { code, color } = ebp.body_parts;
         if (color && !entry.bodyPartColors.includes(color)) {
@@ -311,9 +326,14 @@ export async function fetchSessionsInMonth(
       }
     }
   }
-  return Array.from(byDay.values()).sort(
-    (a, b) => a.dayOfMonth - b.dayOfMonth,
-  );
+  return Array.from(byDay.values())
+    .map(({ exerciseMap, ...rest }) => ({
+      ...rest,
+      exercises: [...exerciseMap.entries()]
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "ko")),
+    }))
+    .sort((a, b) => a.dayOfMonth - b.dayOfMonth);
 }
 
 export type SessionDetail = {
