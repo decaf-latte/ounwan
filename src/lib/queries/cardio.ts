@@ -2,9 +2,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { CardioLog } from "./cardio-types";
 
-// 타입/상수는 cardio-types.ts에 있음 (클라이언트 안전).
-export type { CardioLog, CardioMachine } from "./cardio-types";
-export { CARDIO_MACHINES } from "./cardio-types";
+// 타입은 SessionRunner가 이 경로로 import (상수/CardioMachine은 cardio-types에서 직수입).
+export type { CardioLog } from "./cardio-types";
 
 /** RSC — 세션의 유산소 기록 */
 export async function fetchSessionCardio(

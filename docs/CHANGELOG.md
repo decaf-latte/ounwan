@@ -8,6 +8,15 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ## [Unreleased]
 
+### Removed (ponytail cleanup)
+- `ProgressRing` / `computeDashOffset` — 무참조. `src/components/ui/progress-ring.tsx` 통째 삭제 (`#45`)
+- `DayChip` — 무참조. `src/components/ui/day-chip.tsx` 통째 삭제 (`#45`)
+- `motion.ts` `prefersReducedMotion` — 8줄, 호출부 1개 → `celebrate.ts`에 인라인 (`#45`)
+- 서버 `fetchExerciseProgression` — 클라이언트 버전이 담당, 서버판 미사용 (`#45`)
+- `fetchWeeklySessionDates` — 무참조 (`#45`)
+- `sessionQueryKey` / `templatesQueryKey` / `BODY_PARTS_QUERY_KEY` — 무참조 react-query 키 상수 (`#45`)
+- `cardio.ts` 의 `CARDIO_MACHINES` / `CardioMachine` 재export — 외부 소비자 없음 (`#45`)
+
 ## 2026-07-01
 
 ### Added
