@@ -8,9 +8,6 @@ export type TemplateWithBodyParts = RoutineTemplate & {
   routine_template_body_parts: RoutineTemplateBodyPart[];
 };
 
-export const templatesQueryKey = (userId: string) =>
-  ["templates", userId] as const;
-
 export async function fetchUserTemplates(
   userId: string,
 ): Promise<TemplateWithBodyParts[]> {
