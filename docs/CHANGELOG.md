@@ -8,6 +8,9 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ## [Unreleased]
 
+### Performance
+- 나머지 4개 페이지에 `loading.tsx` 스켈레톤 추가 — `/weight`, `/challenges`, `/challenges/[id]`, `/routines`. 탭 전환 즉시 회색 프리뷰 표시 (`#46`)
+
 ### Removed (ponytail cleanup)
 - `ProgressRing` / `computeDashOffset` — 무참조. `src/components/ui/progress-ring.tsx` 통째 삭제 (`#45`)
 - `DayChip` — 무참조. `src/components/ui/day-chip.tsx` 통째 삭제 (`#45`)
