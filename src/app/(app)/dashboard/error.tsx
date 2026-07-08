@@ -12,7 +12,12 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("dashboard error", error);
-  }, [error]);
+    const key = `retry:${error.digest ?? error.message}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    const t = setTimeout(reset, 1500);
+    return () => clearTimeout(t);
+  }, [error, reset]);
 
   return (
     <main className="p-5 max-w-md lg:max-w-5xl mx-auto space-y-4">
