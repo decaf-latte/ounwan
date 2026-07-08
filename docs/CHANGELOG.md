@@ -8,6 +8,9 @@ PR 머지 기준이며, 각 항목 끝의 `#NN` 은 GitHub PR 번호.
 
 ## [Unreleased]
 
+### Fixed
+- 콜드스타트/RSC race로 첫 진입 시 에러 페이지 뜨는 문제 — error.tsx 4개(dashboard/history/workout/[sessionId]/workout/new)에 digest별 1회 자동 재시도 추가 (`#47`)
+
 ### Performance
 - 나머지 4개 페이지에 `loading.tsx` 스켈레톤 추가 — `/weight`, `/challenges`, `/challenges/[id]`, `/routines`. 탭 전환 즉시 회색 프리뷰 표시 (`#46`)
 

@@ -12,7 +12,13 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("workout/[sessionId] error", error);
-  }, [error]);
+    // 콜드스타트/일시적 RSC race 대비 1회 자동 재시도 (digest별 tab 스코프)
+    const key = `retry:${error.digest ?? error.message}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    const t = setTimeout(reset, 1500);
+    return () => clearTimeout(t);
+  }, [error, reset]);
 
   return (
     <main className="p-5 max-w-md mx-auto space-y-4">
